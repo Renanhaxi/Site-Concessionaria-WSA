@@ -19,32 +19,30 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
 
     <style>
-        /* Ajuste para a fonte padrão do Tailwind */
         body {
             font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
         }
     </style>
 </head>
 <body class="bg-black">
-    <!-- 5. Este é o ponto de entrada para o App React -->
     <div id="root"></div>
 
-    <!-- 6. Este é todo o seu código React (dentro de uma tag text/babel) -->
     <script type="text/babel">
-        // Envolvemos todo o código em uma função main()
         function main() {
-            const { useEffect, useMemo, useState } = React;
+            const { useEffect, useMemo, useState, useRef } = React;
             
             // =============================
             // UTILITÁRIOS
             // =============================
-            const real = (n) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-            const km = (n) => `${n.toLocaleString("pt-BR")} km`;
+            const real = (n) => typeof n === 'number' ? n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : real(0);
+            const km = (n) => typeof n === 'number' ? `${n.toLocaleString("pt-BR")} km` : km(0);
             const ucFirst = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
-            const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-            const brLocaleDate = (d) => new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(d);
+            const slugify = (s) => s ? s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : "";
+            const brLocaleDate = (d) => d ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(d) : "";
+            const generateSlug = (v) => v ? `${slugify(`${v.brand} ${v.model} ${v.version}`)}-${v.id}` : "";
 
             // =============================
             // DADOS PARA UPLOAD INICIAL (Seed)
@@ -321,11 +319,7 @@
                 store: { name: "Loja Rio/RJ", phone: "0800 200 2000", address: "Av. Atlântica, 500 - Rio de Janeiro / RJ" },
               },
             ];
-
-            MOCK_VEHICLES_FOR_SEEDING.forEach(v => {
-                v.slug = `${slugify(`${v.brand} ${v.model} ${v.version}`)}-${v.id}`;
-            });
-
+            MOCK_VEHICLES_FOR_SEEDING.forEach(v => { v.slug = generateSlug(v); });
             const ACCESSORIES = [
               "Alarme", "Ar-condicionado", "Banco do motorista com ajuste de altura", "Computador de bordo",
               "Desembaçador traseiro", "Direção elétrica", "Distribuição eletrônica de frenagem", "Freio ABS",
@@ -335,10 +329,10 @@
             // =============================
             // COMPONENTES BÁSICOS
             // =============================
-            function LoadingScreen() {
+            function LoadingScreen({ message = "Carregando..." }) {
                 return (
                     <div className="flex items-center justify-center h-screen w-full text-white text-xl bg-black">
-                        Carregando WSA Veículos...
+                        {message}
                     </div>
                 );
             }
@@ -409,6 +403,7 @@
               const [q, setQ] = useState(initialQuery);
               const [isMenuOpen, setIsMenuOpen] = useState(false);
               const isLoggedIn = user && user.profile && user.profile.role !== 'visitor';
+              const isAdmin = user && user.profile && user.profile.role === 'admin';
 
               return (
                 <header className="sticky top-0 z-40 backdrop-blur bg-black/80 border-b border-gray-800">
@@ -437,17 +432,18 @@
                         <a href="#/estoque" className="text-gray-300 hover:text-red-500">Estoque</a>
                         <a href="#/lojas" className="text-gray-300 hover:text-red-500">Lojas</a>
                         <a href="#/duvidas" className="text-gray-300 hover:text-red-500">Dúvidas</a>
+                        {isAdmin && <a href="#/admin" className="text-yellow-400 hover:text-yellow-300">Admin</a>}
                         {isLoggedIn ? (
                            <button onClick={onSignOut} className="text-gray-300 hover:text-red-500">Sair</button>
                         ) : (
                            <a href="#/login" className="text-gray-300 hover:text-red-500">Entrar / Cadastrar</a>
                         )}
-                        <a href="#/contato" className="rounded-lg bg-red-600 text-white px-3 py-1.5 hover:bg-red-700">Falar no WhatsApp</a>
+                        <a href="https://wa.me/5511000000000" target="_blank" rel="noreferrer" className="rounded-lg bg-red-600 text-white px-3 py-1.5 hover:bg-red-700">Falar no WhatsApp</a>
                       </nav>
                       {/* <!-- Botão Hamburger para Mobile --> */}
                       <div className="md:hidden">
-                        <button 
-                          onClick={() => setIsMenuOpen(!isMenuOpen)} 
+                        <button
+                          onClick={() => setIsMenuOpen(!isMenuOpen)}
                           className="p-2 rounded-md text-gray-300 hover:bg-gray-800"
                           aria-label="Abrir menu"
                           aria-expanded={isMenuOpen}
@@ -464,9 +460,10 @@
                           <a href="#/estoque" className="text-gray-300 hover:text-red-500 p-2 rounded-md hover:bg-gray-800" onClick={() => setIsMenuOpen(false)}>Estoque</a>
                           <a href="#/lojas" className="text-gray-300 hover:text-red-500 p-2 rounded-md hover:bg-gray-800" onClick={() => setIsMenuOpen(false)}>Lojas</a>
                           <a href="#/duvidas" className="text-gray-300 hover:text-red-500 p-2 rounded-md hover:bg-gray-800" onClick={() => setIsMenuOpen(false)}>Dúvidas</a>
+                          {isAdmin && <a href="#/admin" className="text-yellow-400 hover:text-yellow-300 p-2 rounded-md hover:bg-gray-800" onClick={() => setIsMenuOpen(false)}>Admin</a>}
                           {isLoggedIn ? (
-                            <button 
-                                onClick={() => { onSignOut(); setIsMenuOpen(false); }} 
+                            <button
+                                onClick={() => { onSignOut(); setIsMenuOpen(false); }}
                                 className="text-left text-gray-300 hover:text-red-500 p-2 rounded-md hover:bg-gray-800"
                             >
                                 Sair
@@ -474,7 +471,7 @@
                           ) : (
                             <a href="#/login" className="text-gray-300 hover:text-red-500 p-2 rounded-md hover:bg-gray-800" onClick={() => setIsMenuOpen(false)}>Entrar / Cadastrar</a>
                           )}
-                          <a href="#/contato" className="rounded-lg bg-red-600 text-white px-3 py-2 text-center hover:bg-red-700" onClick={() => setIsMenuOpen(false)}>Falar no WhatsApp</a>
+                          <a href="https://wa.me/5511000000000" target="_blank" rel="noreferrer" className="rounded-lg bg-red-600 text-white px-3 py-2 text-center hover:bg-red-700" onClick={() => setIsMenuOpen(false)}>Falar no WhatsApp</a>
                         </nav>
                       </div>
                     )}
@@ -522,7 +519,7 @@
             // =============================
             // FILTROS / ESTADO
             // =============================
-            function useCatalog(initialVehicles) { 
+            function useCatalog(initialVehicles) {
               const [query, setQuery] = useState("");
               const [filters, setFilters] = useState({
                 brand: "", model: "", state: "", body: "", fuel: "", transmission: "",
@@ -546,7 +543,7 @@
                 const bodies = [...new Set(initialVehicles.map(v => v.body))].sort();
                 const fuels = [...new Set(initialVehicles.map(v => v.fuel))].sort();
                 const transmissions = [...new Set(initialVehicles.map(v => v.transmission))].sort();
-                
+
                 return { brands, modelsByBrand, allModels, states, bodies, fuels, transmissions };
               }, [initialVehicles]);
 
@@ -631,51 +628,51 @@
                 <aside className="grid gap-4 p-4 rounded-2xl ring-1 ring-gray-800 bg-gray-900 lg:bg-transparent lg:p-0 lg:ring-0">
                   <div className="flex items-center gap-2 text-sm font-semibold text-gray-300"><Icon name="filter"/> Filtros</div>
                   <Field label="Marca">
-                    <select className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.brand} onChange={(e)=> setState(s=>({...s, brand: e.target.value, model: ""}))}>
+                    <select className="input-admin" value={state.brand} onChange={(e)=> setState(s=>({...s, brand: e.target.value, model: ""}))}>
                       <option value="">Todas</option>
                       {brands.map(b => <option key={b} value={b}>{b}</option>)}
                     </select>
                   </Field>
                   <Field label="Modelo">
-                    <select className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.model} onChange={(e)=> setState(s=>({...s, model: e.target.value}))}>
+                    <select className="input-admin" value={state.model} onChange={(e)=> setState(s=>({...s, model: e.target.value}))}>
                       <option value="">Todos</option>
                       {(state.brand ? (modelsByBrand[state.brand] || []) : allModels).map(m => <option key={m} value={m}>{m}</option>)}
                     </select>
                   </Field>
                   <Field label="Estado">
-                    <select className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.state} onChange={(e)=> setState(s=>({...s, state: e.target.value}))}>
+                    <select className="input-admin" value={state.state} onChange={(e)=> setState(s=>({...s, state: e.target.value}))}>
                       <option value="">Todos</option>
                       {states.map(uf => <option key={uf} value={uf}>{uf}</option>)}
                     </select>
                   </Field>
                   <Field label="Carroceria">
-                    <select className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.body} onChange={(e)=> setState(s=>({...s, body: e.target.value}))}>
+                    <select className="input-admin" value={state.body} onChange={(e)=> setState(s=>({...s, body: e.target.value}))}>
                       <option value="">Todas</option>
                       {bodies.map(b => <option key={b} value={b}>{b}</option>)}
                     </select>
                   </Field>
                   <Field label="Combustível">
-                    <select className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.fuel} onChange={(e)=> setState(s=>({...s, fuel: e.target.value}))}>
+                    <select className="input-admin" value={state.fuel} onChange={(e)=> setState(s=>({...s, fuel: e.target.value}))}>
                       <option value="">Todos</option>
                       {fuels.map(f => <option key={f} value={f}>{f}</option>)}
                     </select>
                   </Field>
                   <Field label="Câmbio">
-                    <select className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.transmission} onChange={(e)=> setState(s=>({...s, transmission: e.target.value}))}>
+                    <select className="input-admin" value={state.transmission} onChange={(e)=> setState(s=>({...s, transmission: e.target.value}))}>
                       <option value="">Todos</option>
                       {transmissions.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </Field>
                   <Field label={`Preço (${real(state.priceMin)} – ${real(state.priceMax)})`}>
                     <div className="grid grid-cols-2 gap-2">
-                      <input type="number" min={0} max={state.priceMax} className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.priceMin} onChange={(e)=> setState(s=>({...s, priceMin: Number(e.target.value||0)}))}/>
-                      <input type="number" min={state.priceMin} className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.priceMax} onChange={(e)=> setState(s=>({...s, priceMax: Number(e.target.value||0)}))}/>
+                      <input type="number" min={0} max={state.priceMax} className="input-admin" value={state.priceMin} onChange={(e)=> setState(s=>({...s, priceMin: Number(e.target.value||0)}))}/>
+                      <input type="number" min={state.priceMin} className="input-admin" value={state.priceMax} onChange={(e)=> setState(s=>({...s, priceMax: Number(e.target.value||0)}))}/>
                     </div>
                   </Field>
                   <Field label={`Ano modelo (${state.yearMin}–${state.yearMax})`}>
                     <div className="grid grid-cols-2 gap-2">
-                      <input type="number" min={2015} max={state.yearMax} className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.yearMin} onChange={(e)=> setState(s=>({...s, yearMin: Number(e.target.value||0)}))}/>
-                      <input type="number" min={state.yearMin} max={2026} className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.yearMax} onChange={(e)=> setState(s=>({...s, yearMax: Number(e.target.value||0)}))}/>
+                      <input type="number" min={2015} max={state.yearMax} className="input-admin" value={state.yearMin} onChange={(e)=> setState(s=>({...s, yearMin: Number(e.target.value||0)}))}/>
+                      <input type="number" min={state.yearMin} max={2026} className="input-admin" value={state.yearMax} onChange={(e)=> setState(s=>({...s, yearMax: Number(e.target.value||0)}))}/>
                     </div>
                   </Field>
                   <Field label={`Quilometragem máxima (${km(state.kmMax)})`}>
@@ -700,9 +697,9 @@
                       value={query}
                       onChange={(e)=> setQuery(e.target.value)}
                       placeholder="Buscar no estoque"
-                      className="rounded-xl border border-gray-700 bg-gray-800 text-white px-3 py-2 text-sm focus:ring-red-500 focus:border-red-500"
+                      className="input-admin !py-2"
                     />
-                    <select value={sort} onChange={(e)=> setSort(e.target.value)} className="rounded-xl border border-gray-700 bg-gray-800 text-white px-2 py-2 text-sm focus:ring-red-500 focus:border-red-500">
+                    <select value={sort} onChange={(e)=> setSort(e.target.value)} className="input-admin !py-2">
                       <option value="relevance">Mais relevantes</option>
                       <option value="price-asc">Menor preço</option>
                       <option value="price-desc">Maior preço</option>
@@ -833,9 +830,9 @@
                 <div className="grid gap-3 p-4 rounded-2xl ring-1 ring-gray-800 bg-gray-900">
                   <div className="font-semibold text-white">Simule um financiamento 100% digital</div>
                   <div className="grid sm:grid-cols-3 gap-3 text-sm">
-                    <Field label="Entrada (R$)"><input type="number" className="rounded-lg border-gray-700 bg-gray-800 text-white w-full focus:ring-red-500 focus:border-red-500" value={entry} onChange={(e)=> setEntry(Number(e.target.value||0))}/></Field>
-                    <Field label="Parcelas (meses)"><input type="number" min={6} max={72} className="rounded-lg border-gray-700 bg-gray-800 text-white w-full focus:ring-red-500 focus:border-red-500" value={months} onChange={(e)=> setMonths(Number(e.target.value||0))}/></Field>
-                    <Field label="Taxa (% a.m.)"><input type="number" step="0.01" className="rounded-lg border-gray-700 bg-gray-800 text-white w-full focus:ring-red-500 focus:border-red-500" value={rate} onChange={(e)=> setRate(Number(e.target.value||0))}/></Field>
+                    <Field label="Entrada (R$)"><input type="number" className="input-admin" value={entry} onChange={(e)=> setEntry(Number(e.target.value||0))}/></Field>
+                    <Field label="Parcelas (meses)"><input type="number" min={6} max={72} className="input-admin" value={months} onChange={(e)=> setMonths(Number(e.target.value||0))}/></Field>
+                    <Field label="Taxa (% a.m.)"><input type="number" step="0.01" className="input-admin" value={rate} onChange={(e)=> setRate(Number(e.target.value||0))}/></Field>
                   </div>
                   <div className="text-sm text-gray-400">Valor financiado: <strong>{real(financed)}</strong></div>
                   <div className="text-2xl font-extrabold text-white">Parcela estimada: {real(pmt || 0)}</div>
@@ -943,7 +940,7 @@
             function LoginPrompt({ slug, v }) {
                useEffect(() => {
                 document.title = v ? `Login para ver ${v.brand} ${v.model} — WSA Seminovos` : "Login — WSA Seminovos";
-                window.scrollTo(0, 0); 
+                window.scrollTo(0, 0);
               }, [v]);
 
               if (!v) return <LoadingScreen />;
@@ -969,7 +966,7 @@
                 </main>
               );
             }
-            
+
             function LoginPage({ db }) {
               const [email, setEmail] = useState("");
               const [password, setPassword] = useState("");
@@ -986,10 +983,10 @@
                 } catch (err) {
                   setError("Falha no login. Verifique seu e-mail e senha.");
                   console.error("Erro de login:", err);
-                  setLoading(false); 
+                  setLoading(false);
                 }
               };
-              
+
               useEffect(() => { document.title = `Login — WSA Seminovos`; window.scrollTo(0, 0); }, []);
 
               return (
@@ -999,21 +996,21 @@
                         {error && <p className="text-red-400 bg-red-950 p-3 rounded-lg mb-4 text-sm">{error}</p>}
                         <form onSubmit={handleLogin} className="grid gap-4">
                              <Field label="E-mail">
-                                <input 
-                                    type="email" 
-                                    value={email} 
-                                    onChange={(e) => setEmail(e.target.value)} 
-                                    className="rounded-lg border-gray-700 bg-gray-800 text-white w-full focus:ring-red-500 focus:border-red-500" 
-                                    required 
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="input-admin"
+                                    required
                                 />
                             </Field>
                             <Field label="Senha">
-                                <input 
-                                    type="password" 
-                                    value={password} 
-                                    onChange={(e) => setPassword(e.target.value)} 
-                                    className="rounded-lg border-gray-700 bg-gray-800 text-white w-full focus:ring-red-500 focus:border-red-500" 
-                                    required 
+                                <input
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="input-admin"
+                                    required
                                 />
                             </Field>
                             <Button type="submit" className="bg-red-600 text-white hover:bg-red-700 w-full" disabled={loading}>
@@ -1046,7 +1043,7 @@
                           console.log(`Perfil não encontrado para ${userAuth.uid}, criando...`);
                           await userRef.set({
                               email: userAuth.email,
-                              role: 'client', 
+                              role: 'client',
                               createdAt: firebase.firestore.FieldValue.serverTimestamp()
                           });
                           console.log(`Perfil criado para ${userAuth.uid}`);
@@ -1065,7 +1062,7 @@
                 let userCredential = null;
                 try {
                   userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
-                  await ensureUserProfile(userCredential.user); 
+                  await ensureUserProfile(userCredential.user);
                 } catch (err) {
                     let errorMessage = "Falha no cadastro. Verifique os dados ou tente novamente.";
                     if (err.code === 'auth/email-already-in-use') {
@@ -1085,10 +1082,10 @@
                         console.error("Erro de cadastro:", err);
                     }
                     setError(errorMessage);
-                    setLoading(false); 
+                    setLoading(false);
                 }
               };
-              
+
               useEffect(() => { document.title = `Cadastro — WSA Seminovos`; window.scrollTo(0, 0); }, []);
 
               return (
@@ -1098,21 +1095,21 @@
                         {error && <p className="text-red-400 bg-red-950 p-3 rounded-lg mb-4 text-sm">{error}</p>}
                         <form onSubmit={handleRegister} className="grid gap-4">
                             <Field label="E-mail">
-                                <input 
-                                    type="email" 
-                                    value={email} 
-                                    onChange={(e) => setEmail(e.target.value)} 
-                                    className="rounded-lg border-gray-700 bg-gray-800 text-white w-full focus:ring-red-500 focus:border-red-500" 
-                                    required 
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="input-admin"
+                                    required
                                 />
                             </Field>
                             <Field label="Senha (mínimo 6 caracteres)">
-                                <input 
-                                    type="password" 
-                                    value={password} 
-                                    onChange={(e) => setPassword(e.target.value)} 
-                                    className="rounded-lg border-gray-700 bg-gray-800 text-white w-full focus:ring-red-500 focus:border-red-500" 
-                                    required 
+                                <input
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="input-admin"
+                                    required
                                     minLength="6"
                                 />
                             </Field>
@@ -1152,7 +1149,7 @@
                     }
                     setLoading(false);
                 };
-                
+
                 useEffect(() => { document.title = `Recuperar Senha — WSA Seminovos`; window.scrollTo(0, 0); }, []);
 
                 return (
@@ -1163,16 +1160,16 @@
 
                             {error && <p className="text-red-400 bg-red-950 p-3 rounded-lg mb-4 text-sm">{error}</p>}
                             {success && <p className="text-green-400 bg-green-950 p-3 rounded-lg mb-4 text-sm">{success}</p>}
-                            
+
                             {!success && (
                             <form onSubmit={handlePasswordReset} className="grid gap-4">
                                 <Field label="E-mail">
-                                    <input 
-                                        type="email" 
-                                        value={email} 
-                                        onChange={(e) => setEmail(e.target.value)} 
-                                        className="rounded-lg border-gray-700 bg-gray-800 text-white w-full focus:ring-red-500 focus:border-red-500" 
-                                        required 
+                                    <input
+                                        type="email"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        className="input-admin"
+                                        required
                                     />
                                 </Field>
                                 <Button type="submit" className="bg-red-600 text-white hover:bg-red-700 w-full" disabled={loading}>
@@ -1180,7 +1177,7 @@
                                 </Button>
                             </form>
                             )}
-                            
+
                             <p className="text-sm text-gray-400 mt-6 text-center">
                                 Lembrou a senha? <a href="#/login" className="text-red-500 hover:underline">Fazer login</a>
                             </p>
@@ -1191,10 +1188,10 @@
 
             function Detail({ slug, vehicles, user }) {
               const v = vehicles.find((x) => x.slug === slug);
-              
+
               useEffect(() => {
                 document.title = v ? `${v.brand} ${v.model} ${v.version} ${v.yearModel} — WSA Seminovos` : "Veículo — WSA Seminovos";
-                window.scrollTo(0, 0); 
+                window.scrollTo(0, 0);
               }, [v]);
 
               // Se o usuário for 'visitor' (anônimo), mostra o prompt de login
@@ -1202,19 +1199,30 @@
                  const vehicleData = vehicles.find((x) => x.slug === slug);
                  return <LoginPrompt slug={slug} v={vehicleData} />;
               }
-
-              if (!v) return <main className="mx-auto max-w-7xl px-3 py-12 text-white">Veículo não encontrado ou carregando...</main>;
+              // Se não houver veículo correspondente, mostra carregando ou não encontrado
+              if (!v) return <main className="mx-auto max-w-7xl px-3 py-12 text-white">{vehicles.length > 0 ? 'Veículo não encontrado.' : 'Carregando veículo...'}</main>;
 
               const breadcrumb = [
                 { name: "Home", href: "#/" },
                 { name: "Estoque", href: "#/estoque" },
-                { name: `${v.brand} ${v.model}`, href: `#` },
+                { name: `${v.brand} ${v.model}`, href: `#` }, // Link não funcional para o último item
               ];
 
               return (
                 <main className="mx-auto max-w-7xl px-3 py-8">
-                  {/* ... (JSON-LD script) ... */}
+                  {/* JSON-LD para SEO */}
+                  <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+                    "@context": "https://schema.org", "@type": "Product",
+                    name: `${v.brand} ${v.model} ${v.version}`, brand: v.brand, model: v.model,
+                    color: v.color, vehicleTransmission: v.transmission, vehicleEngine: v.engine,
+                    vehicleSeatingCapacity: v.doors, bodyType: v.body,
+                    mileageFromOdometer: { "@type": "QuantitativeValue", value: v.km, unitCode: "KM" },
+                    offers: { "@type": "Offer", priceCurrency: "BRL", price: v.price, availability: "https://schema.org/InStock" },
+                    // Adicionar imagem principal se existir
+                    image: v.photos?.[0] || undefined,
+                  }) }} />
 
+                  {/* Breadcrumb */}
                   <nav className="text-sm text-gray-400 mb-4">
                     {breadcrumb.map((b, i) => (
                       <span key={b.name}>
@@ -1224,9 +1232,13 @@
                     ))}
                   </nav>
 
+                  {/* Layout Principal */}
                   <div className="grid lg:grid-cols-[1fr_400px] gap-6">
-                    <Gallery photos={v.photos} />
+                    {/* Galeria */}
+                    <Gallery photos={v.photos || []} />
+                    {/* Barra Lateral */}
                     <aside className="grid gap-4 self-start">
+                      {/* Card Principal */}
                       <div className="p-4 rounded-2xl ring-1 ring-gray-800 bg-gray-900 grid gap-3">
                         <div className="flex items-center justify-between">
                           <div>
@@ -1244,14 +1256,16 @@
                           <Button className="bg-red-600 text-white hover:bg-red-700">Tenho interesse</Button>
                           <Button className="bg-gray-800 text-white hover:bg-gray-700">Agendar visita</Button>
                         </div>
-                        <div className="text-xs text-gray-500">Muitas pessoas estão pesquisando por esse carro.</div>
+                        {v.tags?.includes("Mais pesquisado") && <div className="text-xs text-yellow-400">Muitas pessoas estão pesquisando por esse carro.</div>}
                       </div>
 
+                      {/* Simulador e Loja */}
                       <FinanceSimulator price={v.price} />
                       <StoreInfo v={v} />
                     </aside>
                   </div>
 
+                  {/* Seções Adicionais */}
                   <section className="mt-8 grid gap-6">
                     <div>
                       <h2 className="text-lg font-bold mb-2 text-white">Sobre este carro</h2>
@@ -1279,6 +1293,7 @@
                     </div>
                   </section>
 
+                  {/* Recomendações */}
                   <Recommend currentId={v.id} vehicles={vehicles} />
                 </main>
               );
@@ -1297,6 +1312,529 @@
             }
 
             // =============================
+            // *** COMPONENTES DA ÁREA ADMINISTRATIVA ***
+            // =============================
+
+            function AdminLayout({ children }) {
+                return (
+                    <main className="mx-auto max-w-7xl px-3 py-8">
+                        <h1 className="text-3xl font-extrabold text-white mb-6">Área Administrativa</h1>
+                        <div className="bg-gray-900 ring-1 ring-gray-800 rounded-2xl p-6">
+                            {children}
+                        </div>
+                    </main>
+                );
+            }
+
+            function ImageUploader({ initialImages = [], onUploadComplete, maxFiles = 10, storage }) {
+                const [files, setFiles] = useState([]);
+                const [previews, setPreviews] = useState(initialImages);
+                const [uploading, setUploading] = useState(false);
+                const [progress, setProgress] = useState({}); // { [fileName]: percentage }
+                const fileInputRef = useRef(null);
+
+                // Sincroniza previews se as imagens iniciais mudarem (ex: no form de edição)
+                useEffect(() => {
+                    setPreviews(initialImages);
+                }, [initialImages]);
+
+                const handleFileChange = (event) => {
+                    const selectedFiles = Array.from(event.target.files);
+                    if (previews.length + selectedFiles.length > maxFiles) {
+                        alert(`Você pode selecionar no máximo ${maxFiles} fotos no total.`);
+                        return;
+                    }
+                    setFiles(prevFiles => [...prevFiles, ...selectedFiles]);
+
+                    selectedFiles.forEach(file => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            setPreviews(prev => [...prev, reader.result]); // Adiciona preview base64
+                        };
+                        reader.readAsDataURL(file);
+                    });
+                     // Limpa o input para permitir selecionar o mesmo arquivo novamente
+                    if (fileInputRef.current) {
+                        fileInputRef.current.value = "";
+                    }
+                };
+
+                const removePreview = (indexToRemove) => {
+                   const urlToRemove = previews[indexToRemove];
+                   const isExistingUrl = urlToRemove.startsWith('http');
+                   const remainingPreviews = previews.filter((_, index) => index !== indexToRemove);
+                   setPreviews(remainingPreviews);
+
+                   if (!isExistingUrl) {
+                     // Se for um preview base64 (novo arquivo), remove da lista `files`
+                     // Encontra o arquivo correspondente comparando o resultado do FileReader (assíncrono!)
+                     // Esta abordagem é complexa e propensa a erros. Simplificando:
+                     // Assumimos que a ordem em `files` corresponde à ordem dos base64 adicionados após os `initialImages`
+                     const filesStartIndex = initialImages.length;
+                     const fileIndexToRemove = indexToRemove - filesStartIndex;
+                     if (fileIndexToRemove >= 0 && fileIndexToRemove < files.length) {
+                        setFiles(prev => prev.filter((_, index) => index !== fileIndexToRemove));
+                        console.log("Arquivo removido da lista de upload.");
+                     }
+                   } else {
+                        console.log("Removendo URL existente:", urlToRemove);
+                        // Se removeu uma URL existente, notifica o pai imediatamente
+                        onUploadComplete(remainingPreviews);
+                   }
+                };
+
+
+                const handleUpload = async () => {
+                   if (files.length === 0) {
+                       console.log("Nenhuma nova imagem para upload.");
+                       // Garante que o pai receba as URLs HTTP atuais mesmo se nada foi upado
+                       onUploadComplete(previews.filter(p => p.startsWith('http')));
+                       return;
+                   }
+
+                   if (!storage) {
+                      alert("Erro: Serviço de Storage não inicializado.");
+                      return;
+                   }
+
+                   setUploading(true);
+                   setProgress({});
+                   const uploadPromises = files.map(file => {
+                       return new Promise((resolve, reject) => {
+                           const storageRef = storage.ref(); // Usar a instância passada
+                           const fileRef = storageRef.child(`vehicle_images/${Date.now()}_${file.name.replace(/\s+/g, '_')}`); // Substitui espaços
+                           const uploadTask = fileRef.put(file);
+
+                           uploadTask.on('state_changed',
+                               (snapshot) => {
+                                   const percentage = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+                                   setProgress(prev => ({ ...prev, [file.name]: percentage }));
+                               },
+                               (error) => {
+                                   console.error("Erro no upload:", file.name, error);
+                                   reject({fileName: file.name, error}); // Rejeita com mais detalhes
+                               },
+                               async () => {
+                                   try {
+                                       const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+                                       resolve(downloadURL);
+                                   } catch (getUrlError) {
+                                       console.error("Erro ao obter URL de download:", file.name, getUrlError);
+                                       reject({fileName: file.name, error: getUrlError});
+                                   }
+                               }
+                           );
+                       });
+                   });
+
+                   try {
+                       const downloadURLs = await Promise.all(uploadPromises);
+                       // Mantém as URLs HTTP que *não* foram removidas e adiciona as novas
+                       const existingHttpUrls = previews.filter(p => p.startsWith('http'));
+                       const finalURLs = [...existingHttpUrls, ...downloadURLs];
+
+                       console.log("Upload completo, URLs finais:", finalURLs);
+                       onUploadComplete(finalURLs); // Envia o array final para o formulário
+                       setFiles([]); // Limpa arquivos após sucesso
+                       setPreviews(finalURLs); // Atualiza previews para mostrar apenas URLs HTTP
+                   } catch (errorInfo) { // Captura o erro rejeitado com detalhes
+                       console.error("Falha ao fazer upload de uma ou mais imagens:", errorInfo);
+                       alert(`Erro ao fazer upload da imagem "${errorInfo.fileName}". Verifique o console e as regras de segurança do Storage.`);
+                   } finally {
+                        setUploading(false); // Sempre para de carregar no final
+                   }
+                };
+
+
+                return (
+                    <div>
+                        <Field label={`Fotos (${previews.length}/${maxFiles})`}>
+                            <input
+                                type="file"
+                                multiple
+                                accept="image/*"
+                                onChange={handleFileChange}
+                                ref={fileInputRef}
+                                className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-red-600 file:text-white hover:file:bg-red-700 disabled:opacity-50"
+                                disabled={uploading || previews.length >= maxFiles}
+                            />
+                        </Field>
+                        {previews.length > 0 && (
+                            <div className="mt-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                                {previews.map((previewUrl, index) => (
+                                    <div key={index} className="relative group aspect-video rounded-lg overflow-hidden ring-1 ring-gray-700 bg-gray-800">
+                                        <img src={previewUrl} alt={`Preview ${index + 1}`} className="w-full h-full object-cover"
+                                            onError={(e) => { e.target.src = 'https://placehold.co/160x90/222/FFF?text=Erro'; e.target.alt = 'Erro ao carregar'; }}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => removePreview(index)}
+                                            className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            disabled={uploading}
+                                            aria-label="Remover imagem"
+                                        >
+                                            <Icon name="x" className="w-3 h-3" />
+                                        </button>
+                                        {/* Progress Indicator Simplificado */}
+                                        {uploading && files.length > 0 && !previewUrl.startsWith('http') && (
+                                            <div className="absolute inset-0 bg-black/70 flex items-center justify-center text-xs font-bold text-white">
+                                                {/* Encontra o progresso pelo nome do arquivo associado ao preview */}
+                                                {progress[files.find(f => previews[index]?.includes(f.name))?.name] ?? '...'}%
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                         {/* Botão de Upload aparece apenas se houver novos arquivos */}
+                         {files.length > 0 && (
+                             <Button type="button" onClick={handleUpload} className="mt-4 bg-blue-600 text-white hover:bg-blue-700" disabled={uploading}>
+                                 {uploading ? 'Enviando Fotos...' : `Confirmar Upload (${files.length} novas)`}
+                             </Button>
+                         )}
+                         {files.length === 0 && previews.length < maxFiles && (
+                            <p className="text-xs text-gray-500 mt-2">Nenhuma nova foto selecionada. Clique acima para escolher ou clique em "Salvar" para confirmar remoções ou outros dados.</p>
+                         )}
+                         {previews.length >= maxFiles && (
+                             <p className="text-xs text-yellow-500 mt-2">Limite de {maxFiles} fotos atingido.</p>
+                         )}
+                    </div>
+                );
+            }
+
+            function CarForm({ db, appId, vehicleId, onSave, storage }) {
+                const [vehicle, setVehicle] = useState({
+                    brand: '', model: '', version: '', yearFab: '', yearModel: '', fuel: 'Flex',
+                    transmission: 'Manual', engine: '', body: 'Hatch', color: '', plateFinal: '',
+                    doors: 4, km: '', priceBase: '', price: '', tags: [], photos: [],
+                    store: { name: '', phone: '', address: '', hours: [{d: 'Segunda à sexta', h: ''}, {d: 'Sábado', h: ''}, {d: 'Domingo', h: ''}] }
+                });
+                const [loading, setLoading] = useState(false);
+                const [error, setError] = useState('');
+                const [isEditMode, setIsEditMode] = useState(!!vehicleId);
+                const [uploadedPhotoUrls, setUploadedPhotoUrls] = useState([]); // Mantém o estado das URLs finais
+
+                useEffect(() => {
+                    const loadVehicle = () => {
+                        setLoading(true);
+                        setError('');
+                        const docRef = db.collection(`/artifacts/${appId}/public/data/vehicles`).doc(vehicleId);
+                        docRef.get().then(doc => {
+                            if (doc.exists) {
+                                const data = doc.data();
+                                setVehicle({ // Define o estado inicial do formulário
+                                    ...data,
+                                    // Garante que campos opcionais ou arrays existam
+                                    yearFab: data.yearFab || '',
+                                    yearModel: data.yearModel || '',
+                                    km: data.km || '',
+                                    price: data.price || '',
+                                    priceBase: data.priceBase || '',
+                                    doors: data.doors || 4,
+                                    tags: data.tags || [],
+                                    photos: data.photos || [],
+                                    store: {
+                                        name: data.store?.name || '',
+                                        phone: data.store?.phone || '',
+                                        address: data.store?.address || '',
+                                        // Garante pelo menos 3 slots de horário
+                                        hours: [
+                                            {...(data.store?.hours?.[0] || {d:'Segunda à sexta', h:''})},
+                                            {...(data.store?.hours?.[1] || {d:'Sábado', h:''})},
+                                            {...(data.store?.hours?.[2] || {d:'Domingo', h:''})}
+                                        ]
+                                    }
+                                });
+                                setUploadedPhotoUrls(data.photos || []); // Define o estado inicial do uploader
+                            } else {
+                                setError('Veículo não encontrado.');
+                                window.location.hash = '#/admin'; // Redireciona se não encontrar
+                            }
+                            setLoading(false);
+                        }).catch(err => {
+                            console.error("Erro ao buscar veículo:", err);
+                            setError('Erro ao carregar dados do veículo.');
+                            setLoading(false);
+                        });
+                    };
+
+                    if (isEditMode) {
+                        loadVehicle();
+                    } else {
+                         // Reseta o estado para um formulário limpo
+                         setVehicle({
+                            brand: '', model: '', version: '', yearFab: '', yearModel: '', fuel: 'Flex',
+                            transmission: 'Manual', engine: '', body: 'Hatch', color: '', plateFinal: '',
+                            doors: 4, km: '', priceBase: '', price: '', tags: [], photos: [],
+                            store: { name: '', phone: '', address: '', hours: [{d: 'Segunda à sexta', h: ''}, {d: 'Sábado', h: ''}, {d: 'Domingo', h: ''}] }
+                         });
+                         setUploadedPhotoUrls([]);
+                         setLoading(false); // Garante que loading não fique true
+                    }
+                    // Limpa o erro ao mudar de modo ou ID
+                    setError('');
+
+                }, [db, appId, vehicleId, isEditMode]); // Dependências corretas
+
+                const handleChange = (e) => {
+                    const { name, value, type } = e.target;
+                    // Trata números vazios como string vazia para o input, mas salva como null ou 0?
+                    const val = (type === 'number' && value === '') ? '' : (type === 'number' ? Number(value) : value);
+                    setVehicle(prev => ({ ...prev, [name]: val }));
+                };
+
+                const handleNestedChange = (parent, name, value) => {
+                     setVehicle(prev => ({
+                        ...prev,
+                        [parent]: { ...prev[parent], [name]: value }
+                     }));
+                };
+
+                const handleTagChange = (e) => {
+                     setVehicle(prev => ({ ...prev, tags: e.target.value.split(',').map(tag => tag.trim()).filter(Boolean) }));
+                };
+
+                 const handleStoreHoursChange = (index, field, value) => {
+                     setVehicle(prev => {
+                         const newHours = [...(prev.store.hours || [])];
+                         // Garante que o objeto existe antes de tentar acessá-lo
+                         while (newHours.length <= index) { // Adiciona objetos vazios se necessário
+                             newHours.push({d:'', h:''});
+                         }
+                         newHours[index][field] = value;
+                         return { ...prev, store: { ...prev.store, hours: newHours } };
+                     });
+                 };
+
+
+                // Callback do ImageUploader atualiza o estado das URLs finais
+                const handlePhotoUploadComplete = (urls) => {
+                    console.log("Formulário recebeu URLs finais do uploader:", urls);
+                    setUploadedPhotoUrls(urls);
+                    // Atualiza o 'photos' no estado do veículo também para consistência
+                    setVehicle(prev => ({...prev, photos: urls}));
+                };
+
+                const handleSubmit = async (e) => {
+                    e.preventDefault();
+                    if (!storage) {
+                       setError("Erro: Serviço de Storage não inicializado.");
+                       return;
+                    }
+                    setLoading(true);
+                    setError('');
+
+                    try {
+                        // Garante que as fotos mais recentes (após uploads ou remoções) estejam no estado
+                        // Isso é crucial se o upload não for feito no submit final
+                        const finalPhotoUrls = uploadedPhotoUrls;
+
+                        const newId = Date.now(); // Gera ID apenas se for novo
+                        const dataToSave = {
+                            ...vehicle, // Pega todos os dados do formulário
+                            // Garante conversão para número ou null se vazio
+                            yearFab: vehicle.yearFab === '' ? null : Number(vehicle.yearFab),
+                            yearModel: vehicle.yearModel === '' ? null : Number(vehicle.yearModel),
+                            doors: vehicle.doors === '' ? null : Number(vehicle.doors),
+                            km: vehicle.km === '' ? null : Number(vehicle.km),
+                            priceBase: vehicle.priceBase === '' ? null : Number(vehicle.priceBase),
+                            price: vehicle.price === '' ? null : Number(vehicle.price),
+                            photos: finalPhotoUrls, // USA O ESTADO ATUALIZADO PELO UPLOADER/REMOÇÃO
+                            id: isEditMode ? vehicle.id : newId, // Mantém ID antigo ou usa novo
+                            // Garante que store e hours existam, mesmo vazios
+                            store: {
+                                name: vehicle.store?.name || '',
+                                phone: vehicle.store?.phone || '',
+                                address: vehicle.store?.address || '',
+                                hours: vehicle.store?.hours?.filter(h => h.d || h.h) || [] // Filtra horas vazias
+                            },
+                             tags: vehicle.tags || [] // Garante que tags seja array
+                        };
+                         dataToSave.slug = generateSlug(dataToSave); // Gera slug final
+
+                         // Validação básica (exemplo)
+                         if (!dataToSave.brand || !dataToSave.model || !dataToSave.version || !dataToSave.price || !dataToSave.km) {
+                             throw new Error("Campos obrigatórios (Marca, Modelo, Versão, Preço, KM) não podem estar vazios.");
+                         }
+
+                         const collectionPath = `/artifacts/${appId}/public/data/vehicles`;
+                         const docId = isEditMode ? vehicleId : dataToSave.id.toString(); // Usa ID correto
+                         const docRef = db.collection(collectionPath).doc(docId);
+
+                         if (isEditMode) {
+                             await docRef.update(dataToSave);
+                             console.log("Veículo atualizado com sucesso:", docId);
+                         } else {
+                             await docRef.set(dataToSave);
+                             console.log("Veículo adicionado com sucesso:", docId);
+                         }
+                         onSave(); // Redireciona
+                    } catch (err) {
+                        console.error("Erro ao salvar veículo:", err);
+                        setError(`Erro ao salvar veículo: ${err.message}. Verifique os dados e as permissões.`);
+                        setLoading(false); // Permite corrigir e tentar novamente
+                    }
+                };
+
+                // Tela de loading inicial para edição
+                if (loading && isEditMode && !vehicle.brand) {
+                     return <AdminLayout><LoadingScreen message="Carregando veículo..." /></AdminLayout>;
+                }
+
+                return (
+                    <AdminLayout>
+                        <h2 className="text-xl font-bold text-white mb-4">{isEditMode ? 'Editar Veículo' : 'Adicionar Novo Veículo'}</h2>
+                        {error && <p className="text-red-400 bg-red-950 p-3 rounded-lg mb-4 text-sm">{error}</p>}
+
+                        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {/* Inputs renderizados com || '' para evitar warning de uncontrolled */}
+                            <Field label="Marca"><input type="text" name="brand" value={vehicle.brand || ''} onChange={handleChange} required className="input-admin" /></Field>
+                            <Field label="Modelo"><input type="text" name="model" value={vehicle.model || ''} onChange={handleChange} required className="input-admin" /></Field>
+                            <Field label="Versão"><input type="text" name="version" value={vehicle.version || ''} onChange={handleChange} required className="input-admin" /></Field>
+                            <Field label="Ano Fabricação"><input type="number" name="yearFab" value={vehicle.yearFab || ''} onChange={handleChange} required className="input-admin" /></Field>
+                            <Field label="Ano Modelo"><input type="number" name="yearModel" value={vehicle.yearModel || ''} onChange={handleChange} required className="input-admin" /></Field>
+                            <Field label="Cor"><input type="text" name="color" value={vehicle.color || ''} onChange={handleChange} className="input-admin" /></Field>
+
+                            <Field label="Combustível">
+                                <select name="fuel" value={vehicle.fuel || 'Flex'} onChange={handleChange} className="input-admin">
+                                    <option value="Flex">Flex</option> <option value="Gasolina">Gasolina</option> <option value="Diesel">Diesel</option> <option value="Elétrico">Elétrico</option> <option value="Híbrido">Híbrido</option>
+                                </select>
+                            </Field>
+                             <Field label="Câmbio">
+                                <select name="transmission" value={vehicle.transmission || 'Manual'} onChange={handleChange} className="input-admin">
+                                    <option value="Manual">Manual</option> <option value="Automático">Automático</option> <option value="Automatizado">Automatizado</option> <option value="CVT">CVT</option>
+                                </select>
+                            </Field>
+                            <Field label="Motor"><input type="text" name="engine" value={vehicle.engine || ''} onChange={handleChange} placeholder="Ex: 1.0, 1.6 Turbo" className="input-admin" /></Field>
+                            <Field label="Carroceria">
+                                 <select name="body" value={vehicle.body || 'Hatch'} onChange={handleChange} className="input-admin">
+                                    <option value="Hatch">Hatch</option> <option value="Sedan">Sedan</option> <option value="SUV">SUV</option> <option value="Picape">Picape</option> <option value="Van/Utilitário">Van/Utilitário</option> <option value="Outro">Outro</option>
+                                </select>
+                            </Field>
+                            <Field label="Portas"><input type="number" name="doors" value={vehicle.doors || ''} onChange={handleChange} className="input-admin" /></Field>
+                            <Field label="Final da Placa"><input type="text" name="plateFinal" value={vehicle.plateFinal || ''} onChange={handleChange} maxLength="1" className="input-admin" /></Field>
+                            <Field label="KM"><input type="number" name="km" value={vehicle.km || ''} onChange={handleChange} required className="input-admin" /></Field>
+
+                            <Field label="Preço Base (Opcional)"><input type="number" name="priceBase" value={vehicle.priceBase || ''} onChange={handleChange} placeholder="Preço original" className="input-admin" /></Field>
+                            <Field label="Preço de Venda"><input type="number" name="price" value={vehicle.price || ''} onChange={handleChange} required className="input-admin" /></Field>
+                            <Field label="Tags (separadas por vírgula)"><input type="text" name="tags" value={(vehicle.tags || []).join(', ')} onChange={handleTagChange} placeholder="Ex: Mais pesquisado" className="input-admin" /></Field>
+
+                             <Field label="Cidade"><input type="text" name="city" value={vehicle.city || ''} onChange={handleChange} required className="input-admin" /></Field>
+                             <Field label="Estado (UF)"><input type="text" name="state" value={vehicle.state || ''} onChange={handleChange} maxLength="2" required className="input-admin" /></Field>
+
+                            {/* --- Store Info --- */}
+                            <div className="col-span-1 md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6 p-4 border border-gray-700 rounded-lg mt-4">
+                                <h3 className="md:col-span-2 text-lg font-semibold text-white mb-2">Informações da Loja</h3>
+                                <Field label="Nome da Loja"><input type="text" name="store.name" value={vehicle.store?.name || ''} onChange={e => handleNestedChange('store', 'name', e.target.value)} required className="input-admin" /></Field>
+                                <Field label="Telefone da Loja"><input type="text" name="store.phone" value={vehicle.store?.phone || ''} onChange={e => handleNestedChange('store', 'phone', e.target.value)} className="input-admin" /></Field>
+                                <Field label="Endereço Completo" className="md:col-span-2"><input type="text" name="store.address" value={vehicle.store?.address || ''} onChange={e => handleNestedChange('store', 'address', e.target.value)} required className="input-admin" /></Field>
+
+                                {(vehicle.store?.hours || []).map((hour, index) => (
+                                    <div key={index} className="grid grid-cols-2 gap-2">
+                                        <Field label={`Dia ${index + 1}`}><input type="text" value={hour.d || ''} onChange={e => handleStoreHoursChange(index, 'd', e.target.value)} className="input-admin" /></Field>
+                                        <Field label={`Horário ${index + 1}`}><input type="text" value={hour.h || ''} onChange={e => handleStoreHoursChange(index, 'h', e.target.value)} className="input-admin" placeholder="08:00 - 18:00"/></Field>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* --- Image Uploader --- */}
+                            <div className="col-span-1 md:col-span-2 lg:col-span-3 mt-4">
+                               <ImageUploader
+                                  initialImages={uploadedPhotoUrls} // Passa as URLs atuais
+                                  onUploadComplete={handlePhotoUploadComplete}
+                                  storage={storage}
+                               />
+                            </div>
+
+                            {/* --- Actions --- */}
+                            <div className="col-span-1 md:col-span-2 lg:col-span-3 flex justify-end gap-4 mt-6">
+                                <Button type="button" onClick={() => window.location.hash = '#/admin'} className="bg-gray-700 text-white hover:bg-gray-600" disabled={loading}>
+                                    Cancelar
+                                </Button>
+                                <Button type="submit" className="bg-red-600 text-white hover:bg-red-700" disabled={loading}>
+                                    {loading ? 'Salvando...' : (isEditMode ? 'Salvar Alterações' : 'Adicionar Veículo')}
+                                </Button>
+                            </div>
+                        </form>
+                    </AdminLayout>
+                );
+            }
+
+            function AdminDashboard({ db, appId, vehicles }) {
+                const [loading, setLoading] = useState(false);
+                const [error, setError] = useState('');
+
+                const handleDelete = async (vehicleId, vehicleName) => {
+                    if (!confirm(`Tem certeza que deseja excluir o veículo "${vehicleName}" (${vehicleId})? Esta ação não pode ser desfeita.`)) {
+                        return;
+                    }
+                    setLoading(true);
+                    setError('');
+                    try {
+                        const docRef = db.collection(`/artifacts/${appId}/public/data/vehicles`).doc(vehicleId.toString());
+                        await docRef.delete();
+                        console.log("Veículo excluído com sucesso:", vehicleId);
+                        // A lista será atualizada automaticamente pelo listener onSnapshot no App Raiz
+                    } catch (err) {
+                        console.error("Erro ao excluir veículo:", err);
+                        setError('Erro ao excluir veículo.');
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+
+                return (
+                    <AdminLayout>
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold text-white">Gerenciar Estoque ({vehicles.length})</h2>
+                            <a href="#/admin/add">
+                                <Button className="bg-red-600 text-white hover:bg-red-700">Adicionar Novo Veículo</Button>
+                            </a>
+                        </div>
+
+                        {error && <p className="text-red-400 bg-red-950 p-3 rounded-lg mb-4 text-sm">{error}</p>}
+
+                        <div className="overflow-x-auto">
+                           <table className="min-w-full divide-y divide-gray-700">
+                                <thead className="bg-gray-800">
+                                    <tr>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">ID</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Veículo</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Ano</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Preço</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">KM</th>
+                                        <th scope="col" className="relative px-6 py-3"><span className="sr-only">Ações</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-gray-900 divide-y divide-gray-700">
+                                    {vehicles.length === 0 && !loading && (
+                                        <tr><td colSpan="6" className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 text-center">Nenhum veículo cadastrado.</td></tr>
+                                    )}
+                                    {/* Ordena por ID mais recente (maior número) */}
+                                    {[...vehicles].sort((a, b) => b.id - a.id).map((v) => (
+                                        <tr key={v.id} className="hover:bg-gray-800">
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{v.id}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">{v.brand} {v.model} {v.version}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{v.yearFab}/{v.yearModel}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-white">{real(v.price)}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{km(v.km)}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                                                <a href={`#/admin/edit/${v.id}`} className="text-blue-400 hover:text-blue-300">Editar</a>
+                                                <button onClick={() => handleDelete(v.id, `${v.brand} ${v.model}`)} className="text-red-500 hover:text-red-400 disabled:opacity-50" disabled={loading}>
+                                                    Excluir
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                         {loading && <p className="text-center mt-4 text-gray-400">Processando...</p>}
+                    </AdminLayout>
+                );
+            }
+
+            // =============================
             // ROTEAMENTO SIMPLES (#/...)
             // =============================
             function useHashRoute() {
@@ -1304,7 +1842,7 @@
               useEffect(() => {
                 const onChange = () => {
                     setHash(window.location.hash || "#/");
-                    window.scrollTo(0, 0); 
+                    window.scrollTo(0, 0);
                 }
                 window.addEventListener("hashchange", onChange);
                 return () => window.removeEventListener("hashchange", onChange);
@@ -1312,12 +1850,34 @@
               return hash.replace(/^#/, "");
             }
 
-            function Router({ vehicles, user, db }) {
+            function Router({ vehicles, user, db, appId, storage }) {
               const route = useHashRoute();
-              
+              const isAdmin = user && user.profile && user.profile.role === 'admin';
+
               if (route.startsWith("/login")) return <LoginPage db={db} />;
               if (route.startsWith("/register")) return <RegisterPage db={db} />;
               if (route.startsWith("/forgot-password")) return <ForgotPasswordPage />;
+
+              if (route.startsWith("/admin")) {
+                  if (!user) return <LoadingScreen message="Verificando permissões..."/>; // Aguarda auth carregar
+                  if (!isAdmin) {
+                      console.warn("Acesso negado à área admin. Redirecionando...");
+                      // Só redireciona se não estiver já na home ou login
+                      if (window.location.hash !== '#/' && window.location.hash !== '#/login') {
+                         window.location.hash = user.auth ? "#/" : "#/login";
+                      }
+                      return <LoadingScreen message="Acesso negado. Redirecionando..."/>;
+                  }
+
+                  if (route === "/admin") return <AdminDashboard db={db} appId={appId} vehicles={vehicles} />;
+                  if (route === "/admin/add") return <CarForm db={db} appId={appId} storage={storage} onSave={() => window.location.hash = "#/admin"} />;
+                  if (route.startsWith("/admin/edit/")) {
+                      const vehicleId = route.split("/admin/edit/")[1];
+                      return <CarForm db={db} appId={appId} storage={storage} vehicleId={vehicleId} onSave={() => window.location.hash = "#/admin"} />;
+                  }
+                   // Corrigido erro de digitação
+                   return <AdminLayout><h2>Página Admin não encontrada</h2></AdminLayout>;
+              }
 
               if (route.startsWith("/carro/")) {
                 const slug = route.split("/carro/")[1];
@@ -1335,12 +1895,13 @@
             // =============================
             function DealershipCatalogApp() {
               const [db, setDb] = useState(null);
-              const [authInstance, setAuthInstance] = useState(null); 
+              const [authInstance, setAuthInstance] = useState(null);
+              const [storage, setStorage] = useState(null); // Estado para o Storage
               const [appId, setAppId] = useState('default-app-id');
               const [vehicles, setVehicles] = useState([]);
-              const [user, setUser] = useState(null); 
+              const [user, setUser] = useState(null);
               const [isLoadingData, setIsLoadingData] = useState(true);
-              const [isLoadingAuth, setIsLoadingAuth] = useState(true); 
+              const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
               // 1. Inicializa o Firebase
               useEffect(() => {
@@ -1349,171 +1910,214 @@
                       apiKey: "AIzaSyCkCIttysdLHMbEr4xfBoIHrMT6-khSrRk",
                       authDomain: "wsa-site-concessionaria.firebaseapp.com",
                       projectId: "wsa-site-concessionaria",
-                      storageBucket: "wsa-site-concessionaria.firebasestorage.app",
+                      storageBucket: "wsa-site-concessionaria.appspot.com", // Importante para o Storage
                       messagingSenderId: "860029979435",
                       appId: "1:860029979435:web:72fb9c7e622119e9f9936e",
                       measurementId: "G-N9KZGZ7PZB"
                     };
                     const appIdValue = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                    
+
                     if (firebase.apps.length === 0) {
-                        const app = firebase.initializeApp(firebaseConfig); 
-                        setAuthInstance(firebase.auth(app)); 
-                        setDb(firebase.firestore(app)); 
-                        firebase.firestore.setLogLevel('debug'); 
+                        const app = firebase.initializeApp(firebaseConfig);
+                        setAuthInstance(firebase.auth(app));
+                        setDb(firebase.firestore(app));
+                        setStorage(firebase.storage(app)); // Salva a instância do Storage
+                        firebase.firestore.setLogLevel('debug');
                         setAppId(appIdValue);
+                        console.log("Firebase Inicializado");
                     } else {
                         const app = firebase.apps[0];
                         setAuthInstance(firebase.auth(app));
                         setDb(firebase.firestore(app));
+                        setStorage(firebase.storage(app)); // Salva a instância do Storage
                         setAppId(appIdValue);
+                        console.log("Firebase Reutilizado");
                     }
                 } catch (e) {
-                    console.error("Erro ao inicializar o Firebase. Verifique a configuração.", e);
-                    setIsLoadingAuth(false); 
+                    console.error("Erro CRÍTICO ao inicializar o Firebase. Verifique a configuração.", e);
+                    setIsLoadingAuth(false);
                     setIsLoadingData(false);
                 }
               }, []);
 
-              // 2. Gerencia o estado de Autenticação (usuário logado) - LÓGICA REVISADA
+              // 2. Gerencia o estado de Autenticação (usuário logado)
               useEffect(() => {
                 if (!authInstance || !db) {
-                    setIsLoadingAuth(false);
-                    return; 
+                    // Se o Firebase não inicializou, tenta log anônimo ou define como visitante
+                    if (authInstance && !db) { // Auth inicializou, mas DB não
+                         authInstance.signInAnonymously().catch(err => {
+                             console.error("Erro login anônimo (DB falhou):", err);
+                             setUser({ auth: null, profile: { role: 'visitor' } });
+                         }).finally(()=> setIsLoadingAuth(false));
+                    } else { // Nenhum inicializou
+                         setUser({ auth: null, profile: { role: 'visitor' } });
+                         setIsLoadingAuth(false);
+                    }
+                    return;
                 }
 
-                let userProfileUnsubscribe = null; 
+                console.log("Iniciando listener de autenticação...");
+                let userProfileUnsubscribe = null;
 
                 const authUnsubscribe = authInstance.onAuthStateChanged(async (userAuth) => {
-                    setIsLoadingAuth(true); 
+                    console.log("onAuthStateChanged disparado...");
+                    setIsLoadingAuth(true);
                     if (userProfileUnsubscribe) userProfileUnsubscribe();
-                    
+
                     if (userAuth) {
-                        console.log("Auth state changed, user:", userAuth.uid, "Anonymous:", userAuth.isAnonymous);
+                        console.log("Usuário autenticado:", userAuth.uid, "Anônimo:", userAuth.isAnonymous);
                         if (userAuth.isAnonymous) {
                             setUser({ auth: userAuth, profile: { role: 'visitor' } });
                             setIsLoadingAuth(false);
+                            console.log("Estado definido: Visitante anônimo");
                         } else {
-                           // Usuário logado (não anônimo)
+                           console.log("Usuário não anônimo, buscando/criando perfil...");
                            const userRef = db.collection('users').doc(userAuth.uid);
-                           let profileData = { role: 'client', email: userAuth.email }; // Perfil padrão
+                           let profileData = null;
                            let docExists = false;
 
                            try {
-                               // 1. Tenta LER o perfil
+                               // Usar get() primeiro para evitar loop de criação no onSnapshot
                                const doc = await userRef.get();
                                if (doc.exists) {
-                                   console.log("Perfil encontrado:", doc.data());
                                    profileData = doc.data();
                                    docExists = true;
+                                   console.log("Perfil encontrado via get():", profileData);
                                } else {
-                                   console.log("Perfil não encontrado, tentando criar...");
-                                   // 2. Tenta CRIAR o perfil se não existir
+                                   console.log("Perfil não encontrado via get(), criando...");
                                    profileData = {
                                        email: userAuth.email,
-                                       role: 'client', 
+                                       role: 'client',
                                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
                                    };
                                    await userRef.set(profileData);
+                                   docExists = true; // Acabou de criar
                                    console.log("Perfil criado com sucesso.");
-                                   docExists = true;
                                }
+
+                               // Define o estado inicial com os dados obtidos ou criados
+                               setUser({ auth: userAuth, profile: profileData });
+                               setIsLoadingAuth(false);
+                               console.log("Estado definido:", profileData.role);
+
+                               // Redireciona se necessário APÓS definir o estado
+                                if(window.location.hash.includes('/login') || window.location.hash.includes('/register') || window.location.hash.includes('/forgot-password')) {
+                                   console.log("Redirecionando para Home...");
+                                   window.location.hash = "#/";
+                               }
+
+                               // Adiciona o listener para futuras atualizações (ex: promoção admin)
+                               if (docExists) {
+                                   userProfileUnsubscribe = userRef.onSnapshot((doc) => {
+                                       if (doc.exists) {
+                                           console.log("Perfil atualizado via onSnapshot:", doc.data());
+                                           setUser(currentUser => currentUser ? ({ ...currentUser, profile: doc.data() }) : null);
+                                       } else {
+                                            // Perfil foi deletado? Desloga ou trata como erro
+                                            console.warn("Perfil do usuário não encontrado no listener onSnapshot após existir.");
+                                            // authInstance.signOut(); // Opção mais segura
+                                       }
+                                   }, (error) => {
+                                        console.error("Erro no listener onSnapshot do perfil:", error);
+                                   });
+                               }
+
                            } catch (error) {
-                               // **Este é o ponto de falha provável (REGRAS)**
-                               console.error("Erro ao LER ou CRIAR o perfil no Firestore:", error.message);
-                               console.warn("Assumindo perfil 'client' localmente. O login vai funcionar, mas o seed pode falhar se não for admin.");
-                               // Define um perfil local para destravar o login, mesmo se o Firestore falhar
-                               profileData = { role: 'client', email: userAuth.email, firestoreError: true };
-                           }
-                           
-                           // 3. Define o usuário e destrava o app
-                           setUser({ auth: userAuth, profile: profileData });
-                           setIsLoadingAuth(false); 
-
-                           // 4. Redireciona se estiver nas páginas de auth
-                           if(window.location.hash.includes('/login') || window.location.hash.includes('/register') || window.location.hash.includes('/forgot-password')) {
-                               console.log("Redirecionando para Home...");
-                               window.location.hash = "#/"; 
-                           }
-
-                           // 5. (Opcional) Se o perfil foi lido, adiciona um listener para atualizações (promoção admin)
-                           if (docExists) {
-                               userProfileUnsubscribe = userRef.onSnapshot((doc) => {
-                                   if (doc.exists) {
-                                       console.log("Perfil atualizado (listener):", doc.data());
-                                       setUser(currentUser => ({ ...currentUser, profile: doc.data() }));
-                                   }
-                               });
+                               console.error("Erro CRÍTICO ao buscar/criar perfil no Firestore:", error.message, error);
+                               // Define um estado de erro ou fallback
+                               setUser({ auth: userAuth, profile: { role: 'client', email: userAuth.email, firestoreError: true } });
+                               setIsLoadingAuth(false);
+                               alert("Erro ao carregar seu perfil. Tente recarregar a página.");
                            }
                         }
                     } else {
-                        // Usuário deslogado. Tenta logar anonimamente.
                         console.log("Usuário não logado, tentando login anônimo...");
                         authInstance.signInAnonymously().catch(err => {
                             console.error("Erro no login anônimo:", err);
-                            setUser({ auth: null, profile: { role: 'visitor' } }); 
-                            setIsLoadingAuth(false);
+                            setUser({ auth: null, profile: { role: 'visitor' } });
+                        }).finally(() => {
+                           setIsLoadingAuth(false);
+                           console.log("Estado definido: Visitante (falha no anônimo ou deslogado)");
                         });
                     }
                 });
 
                 return () => {
+                    console.log("Limpando listener de autenticação.");
                     authUnsubscribe();
-                    if (userProfileUnsubscribe) userProfileUnsubscribe();
+                    if (userProfileUnsubscribe) {
+                        console.log("Limpando listener do perfil.");
+                        userProfileUnsubscribe();
+                    }
                 }
-              }, [authInstance, db]);
+              }, [authInstance, db]); // Depende das instâncias do Firebase
 
               // 3. Busca os dados dos Veículos
-              useEffect(() => { 
-                  if (!db) { setIsLoadingData(false); return; }; 
-                  
+              useEffect(() => {
+                  if (!db) { setIsLoadingData(false); return; };
+
                   const collectionPath = `/artifacts/${appId}/public/data/vehicles`;
-                  console.log(`Iniciando listener em ${collectionPath}`);
-                  const vehiclesCol = db.collection(collectionPath); 
-                  
-                  const unsubscribe = vehiclesCol.onSnapshot((snapshot) => { 
+                  console.log(`Iniciando listener de veículos em ${collectionPath}`);
+                  const vehiclesCol = db.collection(collectionPath);
+
+                  const unsubscribe = vehiclesCol.onSnapshot((snapshot) => {
                       const vehiclesData = snapshot.docs.map(doc => ({
                           ...doc.data(),
-                          // id: doc.id // Usamos o ID de dentro do documento
+                           // Garante que campos numéricos sejam números
+                           id: Number(doc.data().id),
+                           yearFab: Number(doc.data().yearFab),
+                           yearModel: Number(doc.data().yearModel),
+                           doors: Number(doc.data().doors),
+                           km: Number(doc.data().km),
+                           price: Number(doc.data().price),
+                           priceBase: Number(doc.data().priceBase),
                       }));
-                      console.log(`Dados recebidos: ${vehiclesData.length} veículos.`);
+                      console.log(`Dados de veículos recebidos: ${vehiclesData.length}`);
                       setVehicles(vehiclesData);
                       setIsLoadingData(false);
                   }, (error) => {
-                      console.error("Erro ao buscar dados do Firestore: ", error);
+                      console.error("Erro ao buscar veículos do Firestore: ", error);
+                      // Tenta mostrar mensagem mais útil
+                      if (error.code === 'permission-denied') {
+                          console.error("VERIFIQUE AS REGRAS DE SEGURANÇA DO FIRESTORE para a coleção:", collectionPath);
+                      }
                       setIsLoadingData(false);
                   });
 
-                  return () => unsubscribe();
-              }, [db, appId]); 
+                  return () => {
+                      console.log("Limpando listener de veículos.");
+                      unsubscribe();
+                  }
+              }, [db, appId]); // Depende do DB e appId
 
               // 4. Função de UPLOAD (Seed)
               useEffect(() => {
-                if (!db || !authInstance) return; // Precisa do authInstance
+                if (!db || !authInstance) return;
 
                 window.seedDatabase = async () => {
-                    console.log("Iniciando o Seed do banco de dados...");
+                    // ... (código da função seedDatabase) ...
+                     console.log("Iniciando o Seed do banco de dados...");
                     
                     const currentUser = authInstance.currentUser;
                     if (!currentUser || currentUser.isAnonymous) {
                          alert("Acesso negado. Você precisa estar logado com uma conta de administrador.");
-                         console.warn("Seed negado: usuário não logado ou anônimo.");
+                         console.error("Seed negado: usuário não logado ou anônimo.");
                          return;
                     }
                     
-                    // Verifica o 'role' do usuário no Firestore
+                    console.log("Verificando permissão de admin para:", currentUser.uid);
                     const userRef = db.collection('users').doc(currentUser.uid);
                     let userDoc;
                     try {
                         userDoc = await userRef.get();
                         if (!userDoc.exists || userDoc.data().role !== 'admin') {
                             alert("Acesso negado. Você não tem permissão de administrador para executar esta ação. (Verifique o Firestore)");
-                            console.warn("Seed negado: usuário não é admin no Firestore.", userDoc.data());
+                            console.error("Seed negado: usuário não é admin ou perfil não encontrado.", userDoc.exists ? userDoc.data().role : 'Não existe');
                             return;
                         }
                     } catch (e) {
                          alert("Erro ao verificar permissão de admin. Verifique as Regras do Firestore e o console.");
-                         console.error("Erro ao ler documento do usuário para permissão:", e);
+                         console.error("Erro ao verificar admin:", e);
                          return;
                     }
                     
@@ -1525,14 +2129,15 @@
                     try {
                         const existingData = await vehiclesCol.get();
                         existingDataSize = existingData.size;
+                        console.log(`Coleção ${collectionPath} contém ${existingDataSize} documentos.`);
                     } catch (e) {
-                         console.error("Erro ao ler coleção de veículos (verifique regras):", e);
-                         alert("Erro ao ler coleção de veículos. Verifique as regras do Firestore.");
+                         alert("Erro ao ler coleção de veículos. Verifique as regras do Firestore e o console.");
+                         console.error("Erro ao ler veículos:", e);
                          return;
                     }
                     
                     if (existingDataSize > 0) {
-                        if (!confirm(`A coleção ${collectionPath} já contém ${existingDataSize} documentos. Deseja apagar e recadastrar?`)) {
+                        if (!confirm(`A coleção ${collectionPath} já contém ${existingDataSize} documentos. Deseja APAGAR TODOS e recadastrar os ${MOCK_VEHICLES_FOR_SEEDING.length} veículos de exemplo?`)) {
                            console.log("Seed cancelado pelo usuário.");
                            return;
                         }
@@ -1542,16 +2147,18 @@
                         const oldDocs = await vehiclesCol.get(); // Busca de novo para garantir
                         oldDocs.docs.forEach(doc => deleteBatch.delete(doc.ref));
                         await deleteBatch.commit();
-                        console.log("Dados antigos deletados.");
+                        console.log(`${oldDocs.size} documentos antigos deletados.`);
                     }
 
-                    console.log("Iniciando upload em lote...");
+                    console.log(`Iniciando upload em lote de ${MOCK_VEHICLES_FOR_SEEDING.length} veículos...`);
                     const batch = db.batch(); 
                     
                     MOCK_VEHICLES_FOR_SEEDING.forEach(vehicle => {
-                        // Usamos o ID numérico como ID do documento (convertido para string)
+                        // Garante que o ID do documento seja uma string
                         const docRef = db.collection(collectionPath).doc(vehicle.id.toString()); 
-                        batch.set(docRef, vehicle); 
+                        // Remove campos indefinidos ou nulos antes de salvar
+                        const cleanVehicle = Object.fromEntries(Object.entries(vehicle).filter(([_, v]) => v != null));
+                        batch.set(docRef, cleanVehicle); 
                     });
 
                     try {
@@ -1560,21 +2167,21 @@
                         alert(`Sucesso! ${MOCK_VEHICLES_FOR_SEEDING.length} veículos foram cadastrados.`);
                     } catch (e) {
                         console.error("Erro ao enviar dados em lote: ", e);
-                        alert("Ocorreu um erro ao fazer o upload dos dados. Verifique o console.");
+                        alert("Ocorreu um erro ao fazer o upload dos dados. Verifique o console e as regras do Firestore.");
                     }
                 };
-                console.log("Função de upload pronta. Digite 'seedDatabase()' no console para popular o banco (requer admin).");
-              }, [db, authInstance, appId]);
-
+                console.log("Função de upload 'seedDatabase()' pronta. Digite no console para popular o banco (requer admin logado).");
+              }, [db, authInstance, appId]); // Depende do DB, Auth e appId
 
               // 5. Função de Logout
               const handleSignOut = () => {
                 if (authInstance) {
+                    console.log("Deslogando usuário...");
                     authInstance.signOut();
-                    window.location.hash = "#/";
+                    window.location.hash = "#/"; // Volta para home após logout
                 }
               };
-              
+
               useEffect(() => { document.title = "WSA Seminovos — Catálogo"; }, []);
 
               const handleSearch = (q) => {
@@ -1596,22 +2203,27 @@
                 return () => window.removeEventListener("wsa-search", on);
               }, []);
 
+              // Espera AMBOS carregarem
               if (isLoadingData || isLoadingAuth) {
+                // console.log(`Ainda carregando: Dados=${isLoadingData}, Auth=${isLoadingAuth}`);
                 return <LoadingScreen />;
               }
+               console.log("Renderizando App Completo. Usuário:", user?.profile?.role);
+
 
               return (
                 <div className="min-h-screen grid grid-rows-[auto_1fr_auto] bg-black text-gray-200">
                   <TopBar/>
                   <Header onSearch={handleSearch} user={user} onSignOut={handleSignOut} />
-                  <Router vehicles={vehicles} user={user} db={db} />
+                  {/* Passa storage para o Router */}
+                  <Router vehicles={vehicles} user={user} db={db} appId={appId} storage={storage} />
                   <Footer/>
                 </div>
               );
             }
 
             // =============================
-            // 7. CÓDIGO DE INICIALIZAÇÃO DO REACT
+            // INICIALIZAÇÃO DO REACT
             // =============================
             const container = document.getElementById('root');
             if (container) {
@@ -1627,11 +2239,45 @@
             } else {
               console.error("Erro fatal: <div id='root'> não encontrado.");
             }
-        
+
         } // Fim da função main()
-        
+
+        // Garante que a função main só rode depois que todos os scripts (incluindo Firebase) carregaram
         window.onload = main;
     </script>
+
+    {/* Estilos auxiliares para os inputs do admin */}
+    <style>
+        .input-admin {
+             @apply rounded-lg border-gray-700 bg-gray-800 text-white w-full focus:ring-red-500 focus:border-red-500 disabled:opacity-50;
+        }
+        /* Melhora a aparência do input range */
+        input[type=range] {
+             height: 4px;
+             cursor: pointer;
+             appearance: none;
+             width: 100%;
+             background: #4b5563; /* gray-600 */
+             border-radius: 9999px;
+             outline: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            appearance: none;
+            height: 16px;
+            width: 16px;
+            background: #DC2626; /* red-600 */
+            border-radius: 50%;
+            cursor: pointer;
+        }
+         input[type=range]::-moz-range-thumb {
+             height: 16px;
+             width: 16px;
+             background: #DC2626; /* red-600 */
+             border-radius: 50%;
+             cursor: pointer;
+             border: none; /* Remove border padrão do Firefox */
+         }
+    </style>
 </body>
 </html>
 
