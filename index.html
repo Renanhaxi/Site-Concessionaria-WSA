@@ -424,13 +424,14 @@
               );
             }
 
-            function Button({ children, onClick, className = "", type = "button", ariaLabel }) {
+            function Button({ children, onClick, className = "", type = "button", ariaLabel, disabled = false }) {
               return (
                 <button
                   type={type}
                   aria-label={ariaLabel}
                   onClick={onClick}
-                  className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold shadow-sm ring-1 ring-gray-200 hover:ring-gray-300 active:scale-[.99] transition ${className}`}
+                  disabled={disabled}
+                  className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold shadow-sm ring-1 ring-gray-200 hover:ring-gray-300 active:scale-[.99] transition ${className} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {children}
                 </button>
@@ -635,7 +636,7 @@
                     list = list.sort((a, b) => a.price - b.price);
                     break;
                   case "price-desc":
-                    list = list.sort((a, b) => b.price - b.price);
+                    list = list.sort((a, b) => b.price - a.price);
                     break;
                   case "km-asc":
                     list = list.sort((a, b) => a.km - b.km);
@@ -1119,6 +1120,10 @@
                         <p className="text-sm text-gray-400 mt-6 text-center">
                             Não tem uma conta? <a href="#/register" className="text-red-500 hover:underline">Cadastre-se</a>
                         </p>
+                        {/* <!-- NOVO LINK DE RECUPERAÇÃO --> */}
+                        <p className="text-sm text-gray-400 mt-4 text-center">
+                            <a href="#/forgot-password" className="text-red-500 hover:underline">Esqueceu a senha?</a>
+                        </p>
                     </div>
                 </main>
               );
@@ -1191,6 +1196,68 @@
                         </form>
                         <p className="text-sm text-gray-400 mt-6 text-center">
                             Já tem uma conta? <a href="#/login" className="text-red-500 hover:underline">Faça login</a>
+                        </p>
+                    </div>
+                </main>
+              );
+            }
+
+            // *** NOVO COMPONENTE: PÁGINA DE RECUPERAÇÃO DE SENHA ***
+            function ForgotPasswordPage() {
+              const [email, setEmail] = useState("");
+              const [error, setError] = useState("");
+              const [success, setSuccess] = useState("");
+              const [loading, setLoading] = useState(false);
+
+              const handlePasswordReset = async (e) => {
+                e.preventDefault();
+                setError("");
+                setSuccess("");
+                setLoading(true);
+                try {
+                  await firebase.auth().sendPasswordResetEmail(email);
+                  setSuccess("Verifique seu e-mail! Enviamos um link para você redefinir sua senha.");
+                } catch (err) {
+                  console.error("Erro ao redefinir senha:", err);
+                  if (err.code === 'auth/user-not-found') {
+                    setError("Não encontramos uma conta com este e-mail.");
+                  } else {
+                    setError("Ocorreu um erro. Tente novamente.");
+                  }
+                }
+                setLoading(false);
+              };
+              
+              useEffect(() => { document.title = `Recuperar Senha — WSA Seminovos`; }, []);
+
+              return (
+                <main className="mx-auto max-w-sm px-3 py-10">
+                    <div className="rounded-2xl ring-1 ring-gray-800 bg-gray-900 p-8">
+                        <h1 className="text-2xl font-extrabold mb-4 text-white text-center">Recuperar Senha</h1>
+                        <p className="text-sm text-gray-400 mb-6 text-center">Digite seu e-mail e enviaremos um link para redefinição.</p>
+
+                        {error && <p className="text-red-400 bg-red-950 p-3 rounded-lg mb-4 text-sm">{error}</p>}
+                        {success && <p className="text-green-400 bg-green-950 p-3 rounded-lg mb-4 text-sm">{success}</p>}
+                        
+                        {!success && ( // Só mostra o formulário se ainda não teve sucesso
+                          <form onSubmit={handlePasswordReset} className="grid gap-4">
+                              <Field label="E-mail">
+                                  <input 
+                                      type="email" 
+                                      value={email} 
+                                      onChange={(e) => setEmail(e.target.value)} 
+                                      className="rounded-lg border-gray-700 bg-gray-800 text-white w-full focus:ring-red-500 focus:border-red-500" 
+                                      required 
+                                  />
+                              </Field>
+                              <Button type="submit" className="bg-red-600 text-white hover:bg-red-700 w-full" disabled={loading}>
+                                  {loading ? "Enviando..." : "Enviar Link de Recuperação"}
+                              </Button>
+                          </form>
+                        )}
+                        
+                        <p className="text-sm text-gray-400 mt-6 text-center">
+                            Lembrou a senha? <a href="#/login" className="text-red-500 hover:underline">Fazer login</a>
                         </p>
                     </div>
                 </main>
@@ -1344,6 +1411,7 @@
               // Novas rotas de autenticação
               if (route.startsWith("/login")) return <LoginPage db={db} />;
               if (route.startsWith("/register")) return <RegisterPage db={db} />;
+              if (route.startsWith("/forgot-password")) return <ForgotPasswordPage />;
 
               // Rotas protegidas (ex: /admin) podem vir aqui no futuro
 
