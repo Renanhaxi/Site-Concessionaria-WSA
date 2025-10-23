@@ -15,6 +15,11 @@
     <!-- 3. Carrega o Babel (para compilar o JSX no navegador) -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+    <!-- 4. Carrega os SDKs do Firebase (Versão 8, compatível com a sintaxe 'firebase.app') -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
     <style>
         /* Ajuste para a fonte padrão do Tailwind */
         body {
@@ -23,1167 +28,1576 @@
     </style>
 </head>
 <body class="bg-black">
-    <!-- 4. Este é o ponto de entrada para o App React -->
+    <!-- 5. Este é o ponto de entrada para o App React -->
     <div id="root"></div>
 
-    <!-- 5. Este é todo o seu código React (dentro de uma tag text/babel) -->
-    <!-- CORREÇÃO: Alterado de type_to_remove para type -->
+    <!-- 6. Este é todo o seu código React (dentro de uma tag text/babel) -->
     <script type="text/babel">
-        // Removemos o "import React..." pois ele já foi carregado via CDN
-        const { useEffect, useMemo, useState } = React;
+        // Envolvemos todo o código em uma função main()
+        function main() {
+            // Removemos o "import React..." pois ele já foi carregado via CDN
+            const { useEffect, useMemo, useState } = React;
+            
+            // As funções serão chamadas diretamente (ex: firebase.initializeApp, firebase.auth(), firebase.firestore())
 
-        // =============================
-        // UTILITÁRIOS
-        // =============================
-        const real = (n) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-        const km = (n) => `${n.toLocaleString("pt-BR")} km`;
-        const ucFirst = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
-        const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-        const brLocaleDate = (d) => new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(d);
+            // =============================
+            // UTILITÁRIOS
+            // =============================
+            const real = (n) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+            const km = (n) => `${n.toLocaleString("pt-BR")} km`;
+            const ucFirst = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+            const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+            const brLocaleDate = (d) => new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(d);
 
-        // =============================
-        // DADOS EXEMPLO (mock)
-        // =============================
-        const MOCK_VEHICLES = [
-          {
-            id: 254929,
-            brand: "Fiat",
-            model: "Cronos",
-            version: "Drive 1.0",
-            yearFab: 2023,
-            yearModel: 2024,
-            fuel: "Flex",
-            transmission: "Manual",
-            engine: "1.0",
-            body: "Sedan",
-            color: "Prata",
-            plateFinal: "6",
-            doors: 4,
-            km: 46698,
-            city: "Ananindeua",
-            state: "PA",
-            priceBase: 84090,
-            price: 75990,
-            tags: ["Mais pesquisado", "Foto 360º"],
-            photos: [
-              "https://placehold.co/960x640/222/FFF?text=Fiat+Cronos",
-              "https://placehold.co/960x640/222/FFF?text=Fiat+Cronos+Interior",
-              "https://placehold.co/960x640/222/FFF?text=Fiat+Cronos+Detalhe",
-              "https://placehold.co/960x640/222/FFF?text=Fiat+Cronos+Traseira",
-            ],
-            store: {
-              name: "Loja Ananindeua/PA",
-              phone: "0800 200 2000",
-              address: "Rua MÁRIO COVAS, 545 - Ananindeua / PA",
-              hours: [
-                { d: "Segunda à sexta", h: "08:00 - 19:00" },
-                { d: "Sábado", h: "08:00 - 18:00" },
-                { d: "Domingo", h: "09:00 - 16:00" },
-              ],
-            },
-          },
-          {
-            id: 202401,
-            brand: "Hyundai",
-            model: "HB20",
-            version: "Sense Plus 1.0",
-            yearFab: 2023,
-            yearModel: 2024,
-            fuel: "Flex",
-            transmission: "Manual",
-            engine: "1.0",
-            body: "Hatch",
-            color: "Branco",
-            plateFinal: "3",
-            doors: 4,
-            km: 41104,
-            city: "São Paulo",
-            state: "SP",
-            priceBase: 71290,
-            price: 67990,
-            tags: ["Mais pesquisado"],
-            photos: [
-              "https://placehold.co/960x640/222/FFF?text=Hyundai+HB20",
-              "https://placehold.co/960x640/222/FFF?text=Hyundai+HB20+Interior",
-            ],
-            store: { name: "Loja São Paulo/SP", phone: "0800 200 2000", address: "Av. Exemplo, 123 - São Paulo / SP" },
-          },
-          {
-            id: 202402,
-            brand: "Volkswagen",
-            model: "Polo",
-            version: "1.0",
-            yearFab: 2023,
-            yearModel: 2024,
-            fuel: "Flex",
-            transmission: "Manual",
-            engine: "1.0",
-            body: "Hatch",
-            color: "Cinza",
-            plateFinal: "8",
-            doors: 4,
-            km: 45806,
-            city: "São Paulo",
-            state: "SP",
-            priceBase: 77390,
-            price: 72990,
-            tags: ["Mais pesquisado", "Foto 360º"],
-            photos: ["https://placehold.co/960x640/222/FFF?text=Volkswagen+Polo"],
-            store: { name: "Loja São Paulo/SP", phone: "0800 200 2000", address: "Av. Exemplo, 123 - São Paulo / SP" },
-          },
-          {
-            id: 202403,
-            brand: "Jeep",
-            model: "Renegade",
-            version: "Longitude 1.3",
-            yearFab: 2023,
-            yearModel: 2024,
-            fuel: "Flex",
-            transmission: "Automático",
-            engine: "1.3",
-            body: "SUV",
-            color: "Preto",
-            plateFinal: "4",
-            doors: 4,
-            km: 45500,
-            city: "Curitiba",
-            state: "PR",
-            priceBase: 125190,
-            price: 111990,
-            tags: ["Mais pesquisado", "Foto 360º"],
-            photos: ["https://placehold.co/960x640/222/FFF?text=Jeep+Renegade"],
-            store: { name: "Loja Curitiba/PR", phone: "0800 200 2000", address: "Rua Exemplo, 456 - Curitiba / PR" },
-          },
-          {
-            id: 202404,
-            brand: "Chevrolet",
-            model: "Onix Plus",
-            version: "LTZ 1.0",
-            yearFab: 2023,
-            yearModel: 2024,
-            fuel: "Flex",
-            transmission: "Automático",
-            engine: "1.0",
-            body: "Sedan",
-            color: "Azul",
-            plateFinal: "1",
-            doors: 4,
-            km: 53617,
-            city: "Anápolis",
-            state: "GO",
-            priceBase: 90090,
-            price: 85490,
-            tags: ["Foto 360º"],
-            photos: ["https://placehold.co/960x640/222/FFF?text=Chevrolet+Onix+Plus"],
-            store: { name: "Loja Anápolis/GO", phone: "0800 200 2000", address: "Av. Central, 100 - Anápolis / GO" },
-          },
-          {
-            id: 202405,
-            brand: "Renault",
-            model: "Kwid",
-            version: "1.0",
-            yearFab: 2022,
-            yearModel: 2023,
-            fuel: "Flex",
-            transmission: "Manual",
-            engine: "1.0",
-            body: "Hatch",
-            color: "Vermelho",
-            plateFinal: "5",
-            doors: 4,
-            km: 38200,
-            city: "Belo Horizonte",
-            state: "MG",
-            priceBase: 57990,
-            price: 51990,
-            tags: [],
-            photos: ["https://placehold.co/960x640/222/FFF?text=Renault+Kwid"],
-            store: { name: "Loja BH/MG", phone: "0800 200 2000", address: "Rua X, 10 - Belo Horizonte / MG" },
-          },
-          {
-            id: 202406,
-            brand: "Volkswagen",
-            model: "T-Cross",
-            version: "Comfortline 1.0",
-            yearFab: 2023,
-            yearModel: 2024,
-            fuel: "Flex",
-            transmission: "Automático",
-            engine: "1.0",
-            body: "SUV",
-            color: "Branco",
-            plateFinal: "7",
-            doors: 4,
-            km: 43300,
-            city: "Joinville",
-            state: "SC",
-            priceBase: 124390,
-            price: 117990,
-            tags: [],
-            photos: ["https://placehold.co/960x640/222/FFF?text=Volkswagen+T-Cross"],
-            store: { name: "Loja Joinville/SC", phone: "0800 200 2000", address: "Av. XPTO, 200 - Joinville / SC" },
-          },
-          {
-            id: 202407,
-            brand: "Nissan",
-            model: "Kicks",
-            version: "Advance 1.6",
-            yearFab: 2023,
-            yearModel: 2024,
-            fuel: "Flex",
-            transmission: "Automático",
-            engine: "1.6",
-            body: "SUV",
-            color: "Prata",
-            plateFinal: "2",
-            doors: 4,
-            km: 40120,
-            city: "Rio de Janeiro",
-            state: "RJ",
-            priceBase: 112990,
-            price: 108990,
-            tags: [],
-            photos: ["https://placehold.co/960x640/222/FFF?text=Nissan+Kicks"],
-            store: { name: "Loja Rio/RJ", phone: "0800 200 2000", address: "Av. Atlântica, 500 - Rio de Janeiro / RJ" },
-          },
-          {
-            id: 202408,
-            brand: "Fiat",
-            model: "Argo",
-            version: "Drive 1.0",
-            yearFab: 2023,
-            yearModel: 2024,
-            fuel: "Flex",
-            transmission: "Manual",
-            engine: "1.0",
-            body: "Hatch",
-            color: "Prata",
-            plateFinal: "9",
-            doors: 4,
-            km: 41955,
-            city: "Anápolis",
-            state: "GO",
-            priceBase: 72890,
-            price: 69990,
-            tags: ["Mais pesquisado"],
-            photos: ["https://placehold.co/960x640/222/FFF?text=Fiat+Argo"],
-            store: { name: "Loja Anápolis/GO", phone: "0800 200 2000", address: "Av. Central, 100 - Anápolis / GO" },
-          },
-          {
-            id: 202409,
-            brand: "Toyota",
-            model: "Corolla",
-            version: "GLi 2.0",
-            yearFab: 2022,
-            yearModel: 2023,
-            fuel: "Flex",
-            transmission: "Automático",
-            engine: "2.0",
-            body: "Sedan",
-            color: "Preto",
-            plateFinal: "0",
-            doors: 4,
-            km: 49200,
-            city: "Brasília",
-            state: "DF",
-            priceBase: 119990,
-            price: 114990,
-            tags: [],
-            photos: ["https://placehold.co/960x640/222/FFF?text=Toyota+Corolla"],
-            store: { name: "Loja Brasília/DF", phone: "0800 200 2000", address: "SQN 100 - Brasília / DF" },
-          },
-          {
-            id: 202410,
-            brand: "Chevrolet",
-            model: "Onix",
-            version: "LT 1.0",
-            yearFab: 2023,
-            yearModel: 2024,
-            fuel: "Flex",
-            transmission: "Manual",
-            engine: "1.0",
-            body: "Hatch",
-            color: "Branco",
-            plateFinal: "1",
-            doors: 4,
-            km: 44768,
-            city: "Rio de Janeiro",
-            state: "RJ",
-            priceBase: 71390,
-            price: 69990,
-            tags: ["Mais pesquisado", "Foto 360º"],
-            photos: ["https://placehold.co/960x640/222/FFF?text=Chevrolet+Onix"],
-            store: { name: "Loja Rio/RJ", phone: "0800 200 2000", address: "Av. Atlântica, 500 - Rio de Janeiro / RJ" },
-          },
-        ];
+            // =============================
+            // DADOS PARA UPLOAD INICIAL (Seed)
+            // =============================
+            const MOCK_VEHICLES_FOR_SEEDING = [
+              {
+                id: 254929,
+                brand: "Fiat",
+                model: "Cronos",
+                version: "Drive 1.0",
+                yearFab: 2023,
+                yearModel: 2024,
+                fuel: "Flex",
+                transmission: "Manual",
+                engine: "1.0",
+                body: "Sedan",
+                color: "Prata",
+                plateFinal: "6",
+                doors: 4,
+                km: 46698,
+                city: "Ananindeua",
+                state: "PA",
+                priceBase: 84090,
+                price: 75990,
+                tags: ["Mais pesquisado", "Foto 360º"],
+                photos: [
+                  "https://placehold.co/960x640/222/FFF?text=Fiat+Cronos",
+                  "https://placehold.co/960x640/222/FFF?text=Fiat+Cronos+Interior",
+                  "https://placehold.co/960x640/222/FFF?text=Fiat+Cronos+Detalhe",
+                  "https://placehold.co/960x640/222/FFF?text=Fiat+Cronos+Traseira",
+                ],
+                store: {
+                  name: "Loja Ananindeua/PA",
+                  phone: "0800 200 2000",
+                  address: "Rua MÁRIO COVAS, 545 - Ananindeua / PA",
+                  hours: [
+                    { d: "Segunda à sexta", h: "08:00 - 19:00" },
+                    { d: "Sábado", h: "08:00 - 18:00" },
+                    { d: "Domingo", h: "09:00 - 16:00" },
+                  ],
+                },
+              },
+              {
+                id: 202401,
+                brand: "Hyundai",
+                model: "HB20",
+                version: "Sense Plus 1.0",
+                yearFab: 2023,
+                yearModel: 2024,
+                fuel: "Flex",
+                transmission: "Manual",
+                engine: "1.0",
+                body: "Hatch",
+                color: "Branco",
+                plateFinal: "3",
+                doors: 4,
+                km: 41104,
+                city: "São Paulo",
+                state: "SP",
+                priceBase: 71290,
+                price: 67990,
+                tags: ["Mais pesquisado"],
+                photos: [
+                  "https://placehold.co/960x640/222/FFF?text=Hyundai+HB20",
+                  "https://placehold.co/960x640/222/FFF?text=Hyundai+HB20+Interior",
+                ],
+                store: { name: "Loja São Paulo/SP", phone: "0800 200 2000", address: "Av. Exemplo, 123 - São Paulo / SP" },
+              },
+              {
+                id: 202402,
+                brand: "Volkswagen",
+                model: "Polo",
+                version: "1.0",
+                yearFab: 2023,
+                yearModel: 2024,
+                fuel: "Flex",
+                transmission: "Manual",
+                engine: "1.0",
+                body: "Hatch",
+                color: "Cinza",
+                plateFinal: "8",
+                doors: 4,
+                km: 45806,
+                city: "São Paulo",
+                state: "SP",
+                priceBase: 77390,
+                price: 72990,
+                tags: ["Mais pesquisado", "Foto 360º"],
+                photos: ["https://placehold.co/960x640/222/FFF?text=Volkswagen+Polo"],
+                store: { name: "Loja São Paulo/SP", phone: "0800 200 2000", address: "Av. Exemplo, 123 - São Paulo / SP" },
+              },
+              {
+                id: 202403,
+                brand: "Jeep",
+                model: "Renegade",
+                version: "Longitude 1.3",
+                yearFab: 2023,
+                yearModel: 2024,
+                fuel: "Flex",
+                transmission: "Automático",
+                engine: "1.3",
+                body: "SUV",
+                color: "Preto",
+                plateFinal: "4",
+                doors: 4,
+                km: 45500,
+                city: "Curitiba",
+                state: "PR",
+                priceBase: 125190,
+                price: 111990,
+                tags: ["Mais pesquisado", "Foto 360º"],
+                photos: ["https://placehold.co/960x640/222/FFF?text=Jeep+Renegade"],
+                store: { name: "Loja Curitiba/PR", phone: "0800 200 2000", address: "Rua Exemplo, 456 - Curitiba / PR" },
+              },
+              {
+                id: 202404,
+                brand: "Chevrolet",
+                model: "Onix Plus",
+                version: "LTZ 1.0",
+                yearFab: 2023,
+                yearModel: 2024,
+                fuel: "Flex",
+                transmission: "Automático",
+                engine: "1.0",
+                body: "Sedan",
+                color: "Azul",
+                plateFinal: "1",
+                doors: 4,
+                km: 53617,
+                city: "Ananindeua",
+                state: "GO",
+                priceBase: 90090,
+                price: 85490,
+                tags: ["Foto 360º"],
+                photos: ["https://placehold.co/960x640/222/FFF?text=Chevrolet+Onix+Plus"],
+                store: { name: "Loja Ananindeua/GO", phone: "0800 200 2000", address: "Av. Central, 100 - Ananindeua / GO" },
+              },
+              {
+                id: 202405,
+                brand: "Renault",
+                model: "Kwid",
+                version: "1.0",
+                yearFab: 2022,
+                yearModel: 2023,
+                fuel: "Flex",
+                transmission: "Manual",
+                engine: "1.0",
+                body: "Hatch",
+                color: "Vermelho",
+                plateFinal: "5",
+                doors: 4,
+                km: 38200,
+                city: "Belo Horizonte",
+                state: "MG",
+                priceBase: 57990,
+                price: 51990,
+                tags: [],
+                photos: ["https://placehold.co/960x640/222/FFF?text=Renault+Kwid"],
+                store: { name: "Loja BH/MG", phone: "0800 200 2000", address: "Rua X, 10 - Belo Horizonte / MG" },
+              },
+              {
+                id: 202406,
+                brand: "Volkswagen",
+                model: "T-Cross",
+                version: "Comfortline 1.0",
+                yearFab: 2023,
+                yearModel: 2024,
+                fuel: "Flex",
+                transmission: "Automático",
+                engine: "1.0",
+                body: "SUV",
+                color: "Branco",
+                plateFinal: "7",
+                doors: 4,
+                km: 43300,
+                city: "Joinville",
+                state: "SC",
+                priceBase: 124390,
+                price: 117990,
+                tags: [],
+                photos: ["https://placehold.co/960x640/222/FFF?text=Volkswagen+T-Cross"],
+                store: { name: "Loja Joinville/SC", phone: "0800 200 2000", address: "Av. XPTO, 200 - Joinville / SC" },
+              },
+              {
+                id: 202407,
+                brand: "Nissan",
+                model: "Kicks",
+                version: "Advance 1.6",
+                yearFab: 2023,
+                yearModel: 2024,
+                fuel: "Flex",
+                transmission: "Automático",
+                engine: "1.6",
+                body: "SUV",
+                color: "Prata",
+                plateFinal: "2",
+                doors: 4,
+                km: 40120,
+                city: "Rio de Janeiro",
+                state: "RJ",
+                priceBase: 112990,
+                price: 108990,
+                tags: [],
+                photos: ["https://placehold.co/960x640/222/FFF?text=Nissan+Kicks"],
+                store: { name: "Loja Rio/RJ", phone: "0800 200 2000", address: "Av. Atlântica, 500 - Rio de Janeiro / RJ" },
+              },
+              {
+                id: 202408,
+                brand: "Fiat",
+                model: "Argo",
+                version: "Drive 1.0",
+                yearFab: 2023,
+                yearModel: 2024,
+                fuel: "Flex",
+                transmission: "Manual",
+                engine: "1.0",
+                body: "Hatch",
+                color: "Prata",
+                plateFinal: "9",
+                doors: 4,
+                km: 41955,
+                city: "Ananindeua",
+                state: "GO",
+                priceBase: 72890,
+                price: 69990,
+                tags: ["Mais pesquisado"],
+                photos: ["https://placehold.co/960x640/222/FFF?text=Fiat+Argo"],
+                store: { name: "Loja Ananindeua/GO", phone: "0800 200 2000", address: "Av. Central, 100 - Ananindeua / GO" },
+              },
+              {
+                id: 202409,
+                brand: "Toyota",
+                model: "Corolla",
+                version: "GLi 2.0",
+                yearFab: 2022,
+                yearModel: 2023,
+                fuel: "Flex",
+                transmission: "Automático",
+                engine: "2.0",
+                body: "Sedan",
+                color: "Preto",
+                plateFinal: "0",
+                doors: 4,
+                km: 49200,
+                city: "Brasília",
+                state: "DF",
+                priceBase: 119990,
+                price: 114990,
+                tags: [],
+                photos: ["https://placehold.co/960x640/222/FFF?text=Toyota+Corolla"],
+                store: { name: "Loja Brasília/DF", phone: "0800 200 2000", address: "SQN 100 - Brasília / DF" },
+              },
+              {
+                id: 202410,
+                brand: "Chevrolet",
+                model: "Onix",
+                version: "LT 1.0",
+                yearFab: 2023,
+                yearModel: 2024,
+                fuel: "Flex",
+                transmission: "Manual",
+                engine: "1.0",
+                body: "Hatch",
+                color: "Branco",
+                plateFinal: "1",
+                doors: 4,
+                km: 44768,
+                city: "Rio de Janeiro",
+                state: "RJ",
+                priceBase: 71390,
+                price: 69990,
+                tags: ["Mais pesquisado", "Foto 360º"],
+                photos: ["https://placehold.co/960x640/222/FFF?text=Chevrolet+Onix"],
+                store: { name: "Loja Rio/RJ", phone: "0800 200 2000", address: "Av. Atlântica, 500 - Rio de Janeiro / RJ" },
+              },
+            ];
 
-        const ACCESSORIES = [
-          "Alarme",
-          "Ar-condicionado",
-          "Banco do motorista com ajuste de altura",
-          "Computador de bordo",
-          "Desembaçador traseiro",
-          "Direção elétrica",
-          "Distribuição eletrônica de frenagem",
-          "Freio ABS",
-          "Sensor de estacionamento",
-          "Travas elétricas",
-          "Volante com regulagem de altura",
-        ];
-
-        function buildSlug(v) {
-          return `${slugify(`${v.brand} ${v.model} ${v.version}`)}-${v.id}`;
-        }
-
-        // Prepara slugs
-        const VEHICLES = MOCK_VEHICLES.map((v) => ({ ...v, slug: buildSlug(v) }));
-
-        // =============================
-        // COMPONENTES BÁSICOS
-        // =============================
-        function Icon({ name, className = "w-5 h-5" }) {
-          const icons = {
-            menu: (
-              <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-                <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/>
-              </svg>
-            ),
-            heart: (
-              <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-                <path d="M12 21s-6.716-4.53-9.33-7.144A5.25 5.25 0 1 1 12 6.337a5.25 5.25 0 1 1 9.33 7.52C18.716 16.47 12 21 12 21z"/>
-              </svg>
-            ),
-            star: (
-              <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-                <path d="M12 .587l3.668 7.431 8.2 1.19-5.934 5.787 1.402 8.167L12 18.897 4.664 23.162l1.402-8.167L.132 9.208l8.2-1.19z"/>
-              </svg>
-            ),
-            lightning: (
-              <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-                <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/>
-              </svg>
-            ),
-            map: (
-              <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-                <path d="M9.5 3l5 2 5-2v18l-5 2-5-2-5 2V5l5-2zm0 2.236L6 6.118v13.646l3.5-1.4V5.236zm2 0v13.128l3 1.2V6.436l-3-1.2zM19 4.382l-2.5.999v13.647L19 18.03V4.382z"/>
-              </svg>
-            ),
-            phone: (
-              <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-                <path d="M6.62 10.79a15.054 15.054 0 006.59 6.59l2.2-2.2a1 1 0 011.05-.24c1.15.38 2.39.58 3.64.58a1 1 0 011 1v3.5a1 1 0 01-1 1C10.07 22 2 13.93 2 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.49.58 3.64a1 1 0 01-.24 1.05l-2.22 2.1z"/>
-              </svg>
-            ),
-            filter: (
-              <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-                <path d="M3 5h18v2H3V5zm4 6h10v2H7v-2zm-2 6h14v2H5v-2z"/>
-              </svg>
-            ),
-            x: (
-              <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-                <path d="M18.3 5.71a1 1 0 00-1.41 0L12 10.59 7.11 5.7A1 1 0 105.7 7.11L10.59 12l-4.9 4.89a1 1 0 101.41 1.41L12 13.41l4.89 4.9a1 1 0 001.41-1.41L13.41 12l4.9-4.89a1 1 0 000-1.4z"/>
-              </svg>
-            ),
-            chevronRight: (
-              <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-                <path d="M9 6l6 6-6 6"/>
-              </svg>
-            ),
-            chevronLeft: (
-              <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-                <path d="M15 6l-6 6 6 6"/>
-              </svg>
-            ),
-            search: (
-              <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-                <path d="M10 2a8 8 0 015.292 13.708l4 4a1 1 0 01-1.414 1.414l-4-4A8 8 0 1110 2zm0 2a6 6 0 100 12A6 6 0 0010 4z"/>
-              </svg>
-            ),
-          };
-          return icons[name] ?? null;
-        }
-
-        function Badge({ children, className = "" }) {
-          return (
-            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-900 ${className}`}>
-              {children}
-            </span>
-          );
-        }
-
-        function Button({ children, onClick, className = "", type = "button", ariaLabel }) {
-          return (
-            <button
-              type={type}
-              aria-label={ariaLabel}
-              onClick={onClick}
-              className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold shadow-sm ring-1 ring-gray-200 hover:ring-gray-300 active:scale-[.99] transition ${className}`}
-            >
-              {children}
-            </button>
-          );
-        }
-
-        function Field({ label, children }) {
-          return (
-            <label className="grid gap-1 text-sm">
-              <span className="text-gray-400">{label}</span>
-              {children}
-            </label>
-          );
-        }
-
-        // =============================
-        // CABEÇALHO/RODAPÉ
-        // =============================
-        function TopBar() {
-          return (
-            <div className="w-full bg-red-600 text-white text-xs">
-              <div className="mx-auto max-w-7xl flex items-center justify-between px-3 py-2">
-                <div className="flex items-center gap-2"><Icon name="phone" className="w-4 h-4"/> Central de vendas: <a href="tel:08002002000" className="underline">0800-200-2000</a></div>
-                <div className="hidden sm:block">Atendimento: seg–sex 08:00–19:00 · sáb 08:00–18:00 · dom/feriados 09:00–16:00</div>
-              </div>
-            </div>
-          );
-        }
-
-        function Header({ onSearch, initialQuery = "" }) {
-          const [q, setQ] = useState(initialQuery);
-          const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-          return (
-            <header className="sticky top-0 z-40 backdrop-blur bg-black/80 border-b border-gray-800">
-              <div className="mx-auto max-w-7xl px-3">
-                <div className="flex items-center justify-between py-3 gap-3">
-                  <a href="#/" className="flex items-center gap-2 font-bold text-xl text-white">
-                    <span className="inline-block w-6 h-6 bg-red-600 rounded"></span>
-                    <span>WSA Seminovos</span>
-                  </a>
-                  <div className="flex-1 max-w-2xl">
-                    <div className="relative">
-                      <input
-                        aria-label="Buscar por marca, modelo, versão"
-                        value={q}
-                        onChange={(e) => setQ(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && onSearch(q)}
-                        placeholder="Busque por marca, modelo, versão…"
-                        className="w-full rounded-xl border border-gray-700 bg-gray-900 text-white px-4 py-2.5 pr-10 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                      />
-                      <button onClick={() => onSearch(q)} aria-label="Buscar" className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-gray-400 hover:bg-gray-800">
-                        <Icon name="search" />
-                      </button>
-                    </div>
-                  </div>
-                  <nav className="hidden md:flex items-center gap-4 text-sm">
-                    <a href="#/estoque" className="text-gray-300 hover:text-red-500">Estoque</a>
-                    <a href="#/lojas" className="text-gray-300 hover:text-red-500">Lojas</a>
-                    <a href="#/duvidas" className="text-gray-300 hover:text-red-500">Dúvidas</a>
-                    <a href="#/contato" className="rounded-lg bg-red-600 text-white px-3 py-1.5 hover:bg-red-700">Falar no WhatsApp</a>
-                  </nav>
-                  {/* <!-- Botão Hamburger para Mobile --> */}
-                  <div className="md:hidden">
-                    <button 
-                      onClick={() => setIsMenuOpen(!isMenuOpen)} 
-                      className="p-2 rounded-md text-gray-300 hover:bg-gray-800"
-                      aria-label="Abrir menu"
-                      aria-expanded={isMenuOpen}
-                    >
-                      {isMenuOpen ? <Icon name="x" /> : <Icon name="menu" />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* <!-- Menu Mobile Dropdown --> */}
-                {isMenuOpen && (
-                  <div className="md:hidden absolute top-full left-0 right-0 bg-black border-b border-gray-800 shadow-lg z-50 p-4">
-                    <nav className="flex flex-col gap-4 text-sm">
-                      <a href="#/estoque" className="text-gray-300 hover:text-red-500 p-2 rounded-md hover:bg-gray-800" onClick={() => setIsMenuOpen(false)}>Estoque</a>
-                      <a href="#/lojas" className="text-gray-300 hover:text-red-500 p-2 rounded-md hover:bg-gray-800" onClick={() => setIsMenuOpen(false)}>Lojas</a>
-                      <a href="#/duvidas" className="text-gray-300 hover:text-red-500 p-2 rounded-md hover:bg-gray-800" onClick={() => setIsMenuOpen(false)}>Dúvidas</a>
-                      <a href="#/contato" className="rounded-lg bg-red-600 text-white px-3 py-2 text-center hover:bg-red-700" onClick={() => setIsMenuOpen(false)}>Falar no WhatsApp</a>
-                    </nav>
-                  </div>
-                )}
-              </div>
-            </header>
-          );
-        }
-
-        function Footer() {
-          return (
-            <footer className="bg-black border-t border-gray-800 mt-16">
-              <div className="mx-auto max-w-7xl px-3 py-10 grid md:grid-cols-4 gap-8 text-sm">
-                <div>
-                  <div className="font-semibold mb-2 text-white">WSA Seminovos</div>
-                  <p className="text-gray-400">Catálogo digital de seminovos com baixa quilometragem, garantia e financiamento rápido.</p>
-                </div>
-                <div>
-                  <div className="font-semibold mb-2 text-white">Institucional</div>
-                  <ul className="space-y-1 text-gray-400">
-                    <li><a href="#/vantagens" className="hover:text-red-500">Vantagens e benefícios</a></li>
-                    <li><a href="#/lojas" className="hover:text-red-500">Nossas lojas</a></li>
-                    <li><a href="#/duvidas" className="hover:text-red-500">Dúvidas</a></li>
-                  </ul>
-                </div>
-                <div>
-                  <div className="font-semibold mb-2 text-white">Atendimento</div>
-                  <ul className="space-y-1 text-gray-400">
-                    <li>Central de vendas: <a className="underline" href="tel:08002002000">0800-200-2000</a></li>
-                    <li>WhatsApp: <a className="underline" href="https://wa.me/5500000000000" target="_blank" rel="noreferrer">(00) 00000-0000</a></li>
-                  </ul>
-                </div>
-                <div>
-                  <div className="font-semibold mb-2 text-white">Legal</div>
-                  <ul className="space-y-1 text-gray-400">
-                    <li><a href="#/termos" className="hover:text-red-500">Termos de uso</a></li>
-                    <li><a href="#/privacidade" className="hover:text-red-500">Privacidade</a></li>
-                    <li>© {new Date().getFullYear()} WSA. Todos os direitos reservados.</li>
-                  </ul>
-                </div>
-              </div>
-            </footer>
-          );
-        }
-
-        // =============================
-        // FILTROS / ESTADO
-        // =============================
-        function useCatalog(initialVehicles) {
-          const [query, setQuery] = useState("");
-          const [filters, setFilters] = useState({
-            brand: "",
-            model: "",
-            state: "",
-            body: "",
-            fuel: "",
-            transmission: "",
-            priceMin: 0,
-            priceMax: 200000,
-            yearMin: 2019,
-            yearMax: 2025,
-            kmMax: 100000,
-          });
-          const [sort, setSort] = useState("relevance");
-          const [page, setPage] = useState(1);
-          const pageSize = 9;
-
-          const filtered = useMemo(() => {
-            const q = query.trim().toLowerCase();
-            let list = initialVehicles.filter((v) => {
-              const inQuery = !q || `${v.brand} ${v.model} ${v.version}`.toLowerCase().includes(q);
-              const priceOK = v.price >= filters.priceMin && v.price <= filters.priceMax;
-              const yearOK = v.yearModel >= filters.yearMin && v.yearModel <= filters.yearMax;
-              const kmOK = v.km <= filters.kmMax;
-              const brandOK = !filters.brand || v.brand === filters.brand;
-              const modelOK = !filters.model || v.model === filters.model;
-              const stateOK = !filters.state || v.state === filters.state;
-              const bodyOK = !filters.body || v.body === filters.body;
-              const fuelOK = !filters.fuel || v.fuel === filters.fuel;
-              const transOK = !filters.transmission || v.transmission === filters.transmission;
-              return inQuery && priceOK && yearOK && kmOK && brandOK && modelOK && stateOK && bodyOK && fuelOK && transOK;
+            // Adiciona o slug a cada veículo
+            MOCK_VEHICLES_FOR_SEEDING.forEach(v => {
+                v.slug = `${slugify(`${v.brand} ${v.model} ${v.version}`)}-${v.id}`;
             });
 
-            switch (sort) {
-              case "price-asc":
-                list = list.sort((a, b) => a.price - b.price);
-                break;
-              case "price-desc":
-                list = list.sort((a, b) => b.price - a.price);
-                break;
-              case "km-asc":
-                list = list.sort((a, b) => a.km - b.km);
-                break;
-              case "year-desc":
-                list = list.sort((a, b) => b.yearModel - a.yearModel);
-                break;
-              default:
-                list = list.sort((a, b) => (b.tags?.includes("Mais pesquisado") ? 1 : 0) - (a.tags?.includes("Mais pesquisado") ? 1 : 0));
-            }
+            const ACCESSORIES = [
+              "Alarme",
+              "Ar-condicionado",
+              "Banco do motorista com ajuste de altura",
+              "Computador de bordo",
+              "Desembaçador traseiro",
+              "Direção elétrica",
+              "Distribuição eletrônica de frenagem",
+              "Freio ABS",
+              "Sensor de estacionamento",
+              "Travas elétricas",
+              "Volante com regulagem de altura",
+            ];
 
-            return list;
-          }, [initialVehicles, query, filters, sort]);
-
-          const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-          const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
-
-          useEffect(() => { setPage(1); }, [query, JSON.stringify(filters)]);
-
-          return {
-            query, setQuery,
-            filters, setFilters,
-            sort, setSort,
-            page, setPage,
-            pageSize, totalPages,
-            list: paginated,
-            fullList: filtered,
-          };
-        }
-
-        // =============================
-        // COMPONENTES DE PÁGINA
-        // =============================
-        function Home() {
-          return (
-            <main>
-              <section className="bg-gradient-to-b from-gray-950 to-black">
-                <div className="mx-auto max-w-7xl px-3 py-12 grid md:grid-cols-2 gap-10 items-center">
-                  <div>
-                    <h1 className="text-3xl md:text-5xl font-extrabold leading-tight tracking-tight text-white">Seu seminovo ideal, com transparência e financiamento rápido.</h1>
-                    <p className="mt-4 text-gray-400 max-w-prose">Explore nosso estoque com filtros avançados, fotos em alta resolução e simulação de financiamento 100% digital. Agende uma visita e faça um test drive.</p>
-                    <div className="mt-6 flex gap-3">
-                      <a href="#/estoque" className="rounded-2xl bg-red-600 text-white px-5 py-3 font-semibold shadow-sm hover:bg-red-700">Ver estoque</a>
-                      <a href="#/duvidas" className="rounded-2xl bg-gray-900 text-white ring-1 ring-gray-700 hover:bg-gray-800 px-5 py-3 font-semibold shadow-sm">Tirar dúvidas</a>
+            // =============================
+            // COMPONENTES BÁSICOS
+            // =============================
+            function LoadingScreen() {
+                return (
+                    <div className="flex items-center justify-center h-screen w-full text-white text-xl">
+                        Carregando WSA Veículos...
                     </div>
-                    <ul className="mt-8 grid sm:grid-cols-3 gap-3 text-sm text-gray-300">
-                      <li className="flex items-center gap-2"><Icon name="star" className="w-4 h-4 text-red-600"/> Garantia 3 a 12 meses</li>
-                      <li className="flex items-center gap-2"><Icon name="lightning" className="w-4 h-4 text-red-600"/> Aprovação rápida</li>
-                      <li className="flex items-center gap-2"><Icon name="map" className="w-4 h-4 text-red-600"/> Lojas próximas</li>
-                    </ul>
-                  </div>
-                  <div className="aspect-video rounded-3xl overflow-hidden shadow-xl">
-                    <img src="https://placehold.co/1200x700/111/FFF?text=WSA+Veiculos" alt="Seminovos em destaque" className="w-full h-full object-cover" loading="lazy"/>
-                  </div>
-                </div>
-              </section>
-              <section className="mx-auto max-w-7xl px-3 py-12">
-                <h2 className="text-xl font-bold mb-4 text-white">Destaques do estoque</h2>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {VEHICLES.slice(0, 6).map((v) => <VehicleCard key={v.id} v={v} />)}
-                </div>
-                <div className="mt-6"><a className="inline-block rounded-xl bg-gray-200 text-black hover:bg-white px-4 py-2" href="#/estoque">Ver todos ({VEHICLES.length})</a></div>
-              </section>
-            </main>
-          );
-        }
-
-        function Filters({ state, setState, modelsByBrand }) {
-          const brands = Array.from(new Set(VEHICLES.map(v => v.brand))).sort();
-          const states = Array.from(new Set(VEHICLES.map(v => v.state))).sort();
-          const bodies = Array.from(new Set(VEHICLES.map(v => v.body))).sort();
-          const fuels = Array.from(new Set(VEHICLES.map(v => v.fuel))).sort();
-          const transmissions = Array.from(new Set(VEHICLES.map(v => v.transmission))).sort();
-
-          return (
-            // <!-- Filtros: removido 'sticky top-[4.5rem] self-start' daqui, será controlado pelo Catalog -->
-            <aside className="grid gap-4 p-4 rounded-2xl ring-1 ring-gray-800 bg-gray-900 lg:bg-transparent lg:p-0 lg:ring-0">
-              <div className="flex items-center gap-2 text-sm font-semibold text-gray-300"><Icon name="filter"/> Filtros</div>
-              <Field label="Marca">
-                <select className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.brand} onChange={(e)=> setState(s=>({...s, brand: e.target.value, model: ""}))}>
-                  <option value="">Todas</option>
-                  {brands.map(b => <option key={b} value={b}>{b}</option>)}
-                </select>
-              </Field>
-              <Field label="Modelo">
-                <select className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.model} onChange={(e)=> setState(s=>({...s, model: e.target.value}))}>
-                  <option value="">Todos</option>
-                  {(state.brand ? modelsByBrand[state.brand] : Array.from(new Set(VEHICLES.map(v=>v.model)))).map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
-              </Field>
-              <Field label="Estado">
-                <select className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.state} onChange={(e)=> setState(s=>({...s, state: e.target.value}))}>
-                  <option value="">Todos</option>
-                  {states.map(uf => <option key={uf} value={uf}>{uf}</option>)}
-                </select>
-              </Field>
-              <Field label="Carroceria">
-                <select className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.body} onChange={(e)=> setState(s=>({...s, body: e.target.value}))}>
-                  <option value="">Todas</option>
-                  {bodies.map(b => <option key={b} value={b}>{b}</option>)}
-                </select>
-              </Field>
-              <Field label="Combustível">
-                <select className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.fuel} onChange={(e)=> setState(s=>({...s, fuel: e.target.value}))}>
-                  <option value="">Todos</option>
-                  {fuels.map(f => <option key={f} value={f}>{f}</option>)}
-                </select>
-              </Field>
-              <Field label="Câmbio">
-                <select className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.transmission} onChange={(e)=> setState(s=>({...s, transmission: e.target.value}))}>
-                  <option value="">Todos</option>
-                  {transmissions.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </Field>
-              <Field label={`Preço (${real(state.priceMin)} – ${real(state.priceMax)})`}>
-                <div className="grid grid-cols-2 gap-2">
-                  <input type="number" min={0} max={state.priceMax} className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.priceMin} onChange={(e)=> setState(s=>({...s, priceMin: Number(e.target.value||0)}))}/>
-                  <input type="number" min={state.priceMin} className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.priceMax} onChange={(e)=> setState(s=>({...s, priceMax: Number(e.target.value||0)}))}/>
-                </div>
-              </Field>
-              <Field label={`Ano modelo (${state.yearMin}–${state.yearMax})`}>
-                <div className="grid grid-cols-2 gap-2">
-                  <input type="number" min={2015} max={state.yearMax} className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.yearMin} onChange={(e)=> setState(s=>({...s, yearMin: Number(e.target.value||0)}))}/>
-                  <input type="number" min={state.yearMin} max={2026} className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.yearMax} onChange={(e)=> setState(s=>({...s, yearMax: Number(e.target.value||0)}))}/>
-                </div>
-              </Field>
-              <Field label={`Quilometragem máxima (${km(state.kmMax)})`}>
-                <input type="range" min={10000} max={120000} step={1000} value={state.kmMax} className="accent-red-600" onChange={(e)=> setState(s=>({...s, kmMax: Number(e.target.value)}))}/>
-              </Field>
-              <Button className="bg-gray-200 text-black hover:bg-white" onClick={()=> setState({ brand:"", model:"", state:"", body:"", fuel:"", transmission:"", priceMin:0, priceMax:200000, yearMin:2019, yearMax:2025, kmMax:100000 })}>Limpar filtros</Button>
-            </aside>
-          );
-        }
-
-        function Toolbar({ total, sort, setSort, query, setQuery, onShowFilters }) {
-          return (
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="text-sm text-gray-400">{total} veículos</div>
-              <div className="flex items-center gap-2">
-                {/* <!-- Botão de Filtro para Mobile --> */}
-                <Button className="lg:hidden bg-gray-800 text-white hover:bg-gray-700 ring-gray-700" onClick={onShowFilters}>
-                  <Icon name="filter" className="w-4 h-4 mr-1"/>
-                  Filtrar
-                </Button>
-                <input
-                  aria-label="Buscar no estoque"
-                  value={query}
-                  onChange={(e)=> setQuery(e.target.value)}
-                  placeholder="Buscar no estoque"
-                  className="rounded-xl border border-gray-700 bg-gray-800 text-white px-3 py-2 text-sm focus:ring-red-500 focus:border-red-500"
-                />
-                <select value={sort} onChange={(e)=> setSort(e.target.value)} className="rounded-xl border border-gray-700 bg-gray-800 text-white px-2 py-2 text-sm focus:ring-red-500 focus:border-red-500">
-                  <option value="relevance">Mais relevantes</option>
-                  <option value="price-asc">Menor preço</option>
-                  <option value="price-desc">Maior preço</option>
-                  <option value="km-asc">Menor km</option>
-                  <option value="year-desc">Mais novos</option>
-                </select>
-              </div>
-            </div>
-          );
-        }
-
-        function VehicleCard({ v }) {
-          const href = `#/carro/${v.slug}`;
-          return (
-            <a href={href} className="group rounded-2xl ring-1 ring-gray-800 bg-gray-900 overflow-hidden hover:bg-gray-800 transition">
-              <div className="relative aspect-[4/3] overflow-hidden bg-gray-800">
-                <img src={v.photos?.[0]} alt={`${v.brand} ${v.model}`} className="w-full h-full object-cover group-hover:scale-[1.02] transition" loading="lazy"/>
-                <div className="absolute top-2 left-2 flex gap-2">
-                  {v.tags?.slice(0,2).map((t)=> <Badge key={t} className="bg-black/80 backdrop-blur text-gray-200 ring-1 ring-gray-700">{t}</Badge>)}
-                </div>
-              </div>
-              <div className="p-4 grid gap-2">
-                <div className="flex items-center justify-between">
-                  <div className="font-semibold text-white">{v.brand}</div>
-                  <Badge className="bg-red-950 text-red-300 ring-1 ring-red-800">{v.yearFab}/{v.yearModel}</Badge>
-                </div>
-                <div className="text-white text-lg font-bold leading-snug">{v.model} {v.version}</div>
-                <div className="text-sm text-gray-400">{km(v.km)} · {v.transmission} · {v.fuel}</div>
-                <div className="text-xs text-gray-400 flex items-center gap-1"><Icon name="map" className="w-4 h-4"/> {v.city}/{v.state}</div>
-                <div className="mt-2">
-                  {v.priceBase > v.price && (
-                    <div className="text-xs text-gray-500 line-through">{real(v.priceBase)}</div>
-                  )}
-                  <div className="text-xl font-extrabold text-white">{real(v.price)}</div>
-                </div>
-              </div>
-            </a>
-          );
-        }
-
-        function Pagination({ page, setPage, totalPages }) {
-          if (totalPages <= 1) return null;
-          const pages = Array.from({ length: totalPages }, (_, i) => i + 1).slice(0, 7);
-          return (
-            <div className="flex items-center justify-center gap-1 mt-6">
-              <Button className="bg-gray-800 text-white hover:bg-gray-700" onClick={()=> setPage(Math.max(1, page-1))}><Icon name="chevronLeft"/></Button>
-              {pages.map(p => (
-                <Button key={p} className={`bg-gray-800 text-white hover:bg-gray-700 ${p === page ? "ring-red-500 bg-red-600 text-white" : "ring-gray-700"}`} onClick={()=> setPage(p)}>{p}</Button>
-              ))}
-              <Button className="bg-gray-800 text-white hover:bg-gray-700" onClick={()=> setPage(Math.min(totalPages, page+1))}><Icon name="chevronRight"/></Button>
-            </div>
-          );
-        }
-
-        // ***** CORREÇÃO AQUI *****
-        // Adicionando a definição da função Catalog() que foi removida
-        function Catalog() {
-          const modelsByBrand = useMemo(() => {
-            const map = {};
-            for (const v of VEHICLES) {
-              map[v.brand] = map[v.brand] || [];
-              if (!map[v.brand].includes(v.model)) map[v.brand].push(v.model);
+                );
             }
-            for (const k in map) map[k].sort();
-            return map;
-          }, []);
 
-          const {
-            query, setQuery,
-            filters, setFilters,
-            sort, setSort,
-            page, setPage,
-            list, fullList, totalPages
-          } = useCatalog(VEHICLES);
+            function Icon({ name, className = "w-5 h-5" }) {
+              const icons = {
+                menu: (
+                  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+                    <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/>
+                  </svg>
+                ),
+                heart: (
+                  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+                    <path d="M12 21s-6.716-4.53-9.33-7.144A5.25 5.25 0 1 1 12 6.337a5.25 5.25 0 1 1 9.33 7.52C18.716 16.47 12 21 12 21z"/>
+                  </svg>
+                ),
+                star: (
+                  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+                    <path d="M12 .587l3.668 7.431 8.2 1.19-5.934 5.787 1.402 8.167L12 18.897 4.664 23.162l1.402-8.167L.132 9.208l8.2-1.19z"/>
+                  </svg>
+                ),
+                lightning: (
+                  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+                    <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/>
+                  </svg>
+                ),
+                map: (
+                  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+                    <path d="M9.5 3l5 2 5-2v18l-5 2-5-2-5 2V5l5-2zm0 2.236L6 6.118v13.646l3.5-1.4V5.236zm2 0v13.128l3 1.2V6.436l-3-1.2zM19 4.382l-2.5.999v13.647L19 18.03V4.382z"/>
+                  </svg>
+                ),
+                phone: (
+                  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+                    <path d="M6.62 10.79a15.054 15.054 0 006.59 6.59l2.2-2.2a1 1 0 011.05-.24c1.15.38 2.39.58 3.64.58a1 1 0 011 1v3.5a1 1 0 01-1 1C10.07 22 2 13.93 2 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.49.58 3.64a1 1 0 01-.24 1.05l-2.22 2.1z"/>
+                  </svg>
+                ),
+                filter: (
+                  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+                    <path d="M3 5h18v2H3V5zm4 6h10v2H7v-2zm-2 6h14v2H5v-2z"/>
+                  </svg>
+                ),
+                x: (
+                  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+                    <path d="M18.3 5.71a1 1 0 00-1.41 0L12 10.59 7.11 5.7A1 1 0 105.7 7.11L10.59 12l-4.9 4.89a1 1 0 101.41 1.41L12 13.41l4.89 4.9a1 1 0 001.41-1.41L13.41 12l4.9-4.89a1 1 0 000-1.4z"/>
+                  </svg>
+                ),
+                chevronRight: (
+                  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+                    <path d="M9 6l6 6-6 6"/>
+                  </svg>
+                ),
+                chevronLeft: (
+                  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+                    <path d="M15 6l-6 6 6 6"/>
+                  </svg>
+                ),
+                search: (
+                  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+                    <path d="M10 2a8 8 0 015.292 13.708l4 4a1 1 0 01-1.414 1.414l-4-4A8 8 0 1110 2zm0 2a6 6 0 100 12A6 6 0 0010 4z"/>
+                  </svg>
+                ),
+              };
+              return icons[name] ?? null;
+            }
 
-          const [showFilters, setShowFilters] = useState(false);
+            function Badge({ children, className = "" }) {
+              return (
+                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-900 ${className}`}>
+                  {children}
+                </span>
+              );
+            }
 
-          useEffect(() => {
-            document.title = `Estoque (${fullList.length}) — WSA Seminovos`;
-          }, [fullList.length]);
-
-          return (
-            <main className="mx-auto max-w-7xl px-3 py-8">
-              <div className="grid lg:grid-cols-[280px_1fr] gap-6">
-                
-                {/* <!-- Filtros Mobile (Off-canvas) --> */}
-                {showFilters && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setShowFilters(false)}></div>}
-                <div 
-                  className={`
-                    fixed lg:sticky top-0 lg:top-[4.5rem] self-start
-                    left-0 w-80 lg:w-auto h-full lg:h-auto 
-                    bg-gray-900 lg:bg-transparent 
-                    shadow-xl lg:shadow-none 
-                    overflow-y-auto lg:overflow-visible 
-                    z-50 lg:z-10
-                    transform transition-transform
-                    ${showFilters ? 'translate-x-0' : '-translate-x-full'}
-                    lg:translate-x-0
-                  `}
+            function Button({ children, onClick, className = "", type = "button", ariaLabel }) {
+              return (
+                <button
+                  type={type}
+                  aria-label={ariaLabel}
+                  onClick={onClick}
+                  className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold shadow-sm ring-1 ring-gray-200 hover:ring-gray-300 active:scale-[.99] transition ${className}`}
                 >
-                  <div className="flex justify-between items-center p-4 lg:hidden">
-                    <h3 className="font-semibold text-white">Filtros</h3>
-                    <Button onClick={() => setShowFilters(false)} className="bg-gray-800 text-white !p-2">
-                      <Icon name="x" className="w-4 h-4"/>
-                    </Button>
+                  {children}
+                </button>
+              );
+            }
+
+            function Field({ label, children }) {
+              return (
+                <label className="grid gap-1 text-sm">
+                  <span className="text-gray-400">{label}</span>
+                  {children}
+                </label>
+              );
+            }
+
+            // =============================
+            // CABEÇALHO/RODAPÉ
+            // =============================
+            function TopBar() {
+              return (
+                <div className="w-full bg-red-600 text-white text-xs">
+                  <div className="mx-auto max-w-7xl flex items-center justify-between px-3 py-2">
+                    <div className="flex items-center gap-2"><Icon name="phone" className="w-4 h-4"/> Central de vendas: <a href="tel:08002002000" className="underline">0800-200-2000</a></div>
+                    <div className="hidden sm:block">Atendimento: seg–sex 08:00–19:00 · sáb 08:00–18:00 · dom/feriados 09:00–16:00</div>
                   </div>
-                  <Filters state={filters} setState={setFilters} modelsByBrand={modelsByBrand} />
                 </div>
+              );
+            }
 
-                <section className="grid gap-4">
-                  <Toolbar 
-                    total={fullList.length} 
-                    sort={sort} 
-                    setSort={setSort} 
-                    query={query} 
-                    setQuery={setQuery}
-                    onShowFilters={() => setShowFilters(true)}
-                  />
-                  {fullList.length === 0 ? (
-                    <div className="p-12 text-center text-gray-400 ring-1 ring-gray-800 rounded-2xl">Nenhum veículo encontrado com os filtros atuais.</div>
-                  ) : (
-                    <>
-                      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {list.map((v) => <VehicleCard key={v.id} v={v} />)}
+            function Header({ onSearch, initialQuery = "", user, onSignOut }) {
+              const [q, setQ] = useState(initialQuery);
+              const [isMenuOpen, setIsMenuOpen] = useState(false);
+              const isLoggedIn = user && user.profile && user.profile.role !== 'visitor';
+
+              return (
+                <header className="sticky top-0 z-40 backdrop-blur bg-black/80 border-b border-gray-800">
+                  <div className="mx-auto max-w-7xl px-3">
+                    <div className="flex items-center justify-between py-3 gap-3">
+                      <a href="#/" className="flex items-center gap-2 font-bold text-xl text-white">
+                        <span className="inline-block w-6 h-6 bg-red-600 rounded"></span>
+                        <span>WSA Seminovos</span>
+                      </a>
+                      <div className="flex-1 max-w-2xl">
+                        <div className="relative">
+                          <input
+                            aria-label="Buscar por marca, modelo, versão"
+                            value={q}
+                            onChange={(e) => setQ(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && onSearch(q)}
+                            placeholder="Busque por marca, modelo, versão…"
+                            className="w-full rounded-xl border border-gray-700 bg-gray-900 text-white px-4 py-2.5 pr-10 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                          />
+                          <button onClick={() => onSearch(q)} aria-label="Buscar" className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-gray-400 hover:bg-gray-800">
+                            <Icon name="search" />
+                          </button>
+                        </div>
                       </div>
-                      <Pagination page={page} setPage={setPage} totalPages={totalPages}/>
-                    </>
-                  )}
-                </section>
-              </div>
-            </main>
-          );
-        }
+                      <nav className="hidden md:flex items-center gap-4 text-sm">
+                        <a href="#/estoque" className="text-gray-300 hover:text-red-500">Estoque</a>
+                        <a href="#/lojas" className="text-gray-300 hover:text-red-500">Lojas</a>
+                        <a href="#/duvidas" className="text-gray-300 hover:text-red-500">Dúvidas</a>
+                        {isLoggedIn ? (
+                           <button onClick={onSignOut} className="text-gray-300 hover:text-red-500">Sair</button>
+                        ) : (
+                           <a href="#/login" className="text-gray-300 hover:text-red-500">Entrar / Cadastrar</a>
+                        )}
+                        <a href="#/contato" className="rounded-lg bg-red-600 text-white px-3 py-1.5 hover:bg-red-700">Falar no WhatsApp</a>
+                      </nav>
+                      {/* <!-- Botão Hamburger para Mobile --> */}
+                      <div className="md:hidden">
+                        <button 
+                          onClick={() => setIsMenuOpen(!isMenuOpen)} 
+                          className="p-2 rounded-md text-gray-300 hover:bg-gray-800"
+                          aria-label="Abrir menu"
+                          aria-expanded={isMenuOpen}
+                        >
+                          {isMenuOpen ? <Icon name="x" /> : <Icon name="menu" />}
+                        </button>
+                      </div>
+                    </div>
 
-        function FinanceSimulator({ price }) {
-          const [entry, setEntry] = useState(Math.round(price * 0.2));
-          const [months, setMonths] = useState(48);
-          const [rate, setRate] = useState(1.79); // % ao mês (exemplo)
+                    {/* <!-- Menu Mobile Dropdown --> */}
+                    {isMenuOpen && (
+                      <div className="md:hidden absolute top-full left-0 right-0 bg-black border-b border-gray-800 shadow-lg z-50 p-4">
+                        <nav className="flex flex-col gap-4 text-sm">
+                          <a href="#/estoque" className="text-gray-300 hover:text-red-500 p-2 rounded-md hover:bg-gray-800" onClick={() => setIsMenuOpen(false)}>Estoque</a>
+                          <a href="#/lojas" className="text-gray-300 hover:text-red-500 p-2 rounded-md hover:bg-gray-800" onClick={() => setIsMenuOpen(false)}>Lojas</a>
+                          <a href="#/duvidas" className="text-gray-300 hover:text-red-500 p-2 rounded-md hover:bg-gray-800" onClick={() => setIsMenuOpen(false)}>Dúvidas</a>
+                          {isLoggedIn ? (
+                            <button 
+                                onClick={() => { onSignOut(); setIsMenuOpen(false); }} 
+                                className="text-left text-gray-300 hover:text-red-500 p-2 rounded-md hover:bg-gray-800"
+                            >
+                                Sair
+                            </button>
+                          ) : (
+                            <a href="#/login" className="text-gray-300 hover:text-red-500 p-2 rounded-md hover:bg-gray-800" onClick={() => setIsMenuOpen(false)}>Entrar / Cadastrar</a>
+                          )}
+                          <a href="#/contato" className="rounded-lg bg-red-600 text-white px-3 py-2 text-center hover:bg-red-700" onClick={() => setIsMenuOpen(false)}>Falar no WhatsApp</a>
+                        </nav>
+                      </div>
+                    )}
+                  </div>
+                </header>
+              );
+            }
 
-          const financed = Math.max(0, price - entry);
-          const i = rate / 100;
-          const pmt = financed > 0 && i > 0 ? (financed * i) / (1 - Math.pow(1 + i, -months)) : 0;
+            function Footer() {
+              return (
+                <footer className="bg-black border-t border-gray-800 mt-16">
+                  <div className="mx-auto max-w-7xl px-3 py-10 grid md:grid-cols-4 gap-8 text-sm">
+                    <div>
+                      <div className="font-semibold mb-2 text-white">WSA Seminovos</div>
+                      <p className="text-gray-400">Catálogo digital de seminovos com baixa quilometragem, garantia e financiamento rápido.</p>
+                    </div>
+                    <div>
+                      <div className="font-semibold mb-2 text-white">Institucional</div>
+                      <ul className="space-y-1 text-gray-400">
+                        <li><a href="#/vantagens" className="hover:text-red-500">Vantagens e benefícios</a></li>
+                        <li><a href="#/lojas" className="hover:text-red-500">Nossas lojas</a></li>
+                        <li><a href="#/duvidas" className="hover:text-red-500">Dúvidas</a></li>
+                      </ul>
+                    </div>
+                    <div>
+                      <div className="font-semibold mb-2 text-white">Atendimento</div>
+                      <ul className="space-y-1 text-gray-400">
+                        <li>Central de vendas: <a className="underline" href="tel:08002002000">0800-200-2000</a></li>
+                        <li>WhatsApp: <a className="underline" href="https://wa.me/5500000000000" target="_blank" rel="noreferrer">(00) 00000-0000</a></li>
+                      </ul>
+                    </div>
+                    <div>
+                      <div className="font-semibold mb-2 text-white">Legal</div>
+                      <ul className="space-y-1 text-gray-400">
+                        <li><a href="#/termos" className="hover:text-red-500">Termos de uso</a></li>
+                        <li><a href="#/privacidade" className="hover:text-red-500">Privacidade</a></li>
+                        <li>© {new Date().getFullYear()} WSA. Todos os direitos reservados.</li>
+                      </ul>
+                    </div>
+                  </div>
+                </footer>
+              );
+            }
 
-          return (
-            <div className="grid gap-3 p-4 rounded-2xl ring-1 ring-gray-800 bg-gray-900">
-              <div className="font-semibold text-white">Simule um financiamento 100% digital</div>
-              <div className="grid sm:grid-cols-3 gap-3 text-sm">
-                <Field label="Entrada (R$)"><input type="number" className="rounded-lg border-gray-700 bg-gray-800 text-white w-full focus:ring-red-500 focus:border-red-500" value={entry} onChange={(e)=> setEntry(Number(e.target.value||0))}/></Field>
-                <Field label="Parcelas (meses)"><input type="number" min={6} max={72} className="rounded-lg border-gray-700 bg-gray-800 text-white w-full focus:ring-red-500 focus:border-red-500" value={months} onChange={(e)=> setMonths(Number(e.target.value||0))}/></Field>
-                <Field label="Taxa (% a.m.)"><input type="number" step="0.01" className="rounded-lg border-gray-700 bg-gray-800 text-white w-full focus:ring-red-500 focus:border-red-500" value={rate} onChange={(e)=> setRate(Number(e.target.value||0))}/></Field>
-              </div>
-              <div className="text-sm text-gray-400">Valor financiado: <strong>{real(financed)}</strong></div>
-              <div className="text-2xl font-extrabold text-white">Parcela estimada: {real(pmt || 0)}</div>
-              <div className="text-xs text-gray-500">Simulação ilustrativa. Sujeito à aprovação de crédito.</div>
-              <div className="flex gap-3 mt-2">
-                <Button className="bg-red-600 text-white hover:bg-red-700">Quero simular</Button>
-                <Button className="bg-gray-800 text-white hover:bg-gray-700">Falar com consultor</Button>
-              </div>
-            </div>
-          );
-        }
+            // =============================
+            // FILTROS / ESTADO
+            // =============================
+            function useCatalog(initialVehicles) { 
+              const [query, setQuery] = useState("");
+              const [filters, setFilters] = useState({
+                brand: "",
+                model: "",
+                state: "",
+                body: "",
+                fuel: "",
+                transmission: "",
+                priceMin: 0,
+                priceMax: 200000,
+                yearMin: 2019,
+                yearMax: 2025,
+                kmMax: 100000,
+              });
+              const [sort, setSort] = useState("relevance");
+              const [page, setPage] = useState(1);
+              const pageSize = 9;
 
-        function Specs({ v }) {
-          const items = [
-            { label: "Quilometragem", value: km(v.km) },
-            { label: "Ano", value: `${v.yearFab}/${v.yearModel}` },
-            { label: "Combustível", value: v.fuel },
-            { label: "Câmbio", value: v.transmission },
-            { label: "Motor", value: v.engine },
-            { label: "Final de placa", value: v.plateFinal },
-            { label: "Portas", value: String(v.doors) },
-            { label: "Cor", value: v.color },
-            { label: "Carroceria", value: v.body },
-          ];
-          return (
-            <div className="grid sm:grid-cols-3 gap-3">
-              {items.map((it) => (
-                <div key={it.label} className="rounded-xl ring-1 ring-gray-800 p-3 bg-gray-900">
-                  <div className="text-xs text-gray-500">{it.label}</div>
-                  <div className="font-semibold text-white">{it.value}</div>
-                </div>
-              ))}
-            </div>
-          );
-        }
+              const uniqueOptions = useMemo(() => {
+                const brands = [...new Set(initialVehicles.map(v => v.brand))].sort();
+                const modelsByBrand = {};
+                for (const v of initialVehicles) {
+                    modelsByBrand[v.brand] = modelsByBrand[v.brand] || [];
+                    if (!modelsByBrand[v.brand].includes(v.model)) modelsByBrand[v.brand].push(v.model);
+                }
+                for (const k in modelsByBrand) modelsByBrand[k].sort();
 
-        function Accessories() {
-          return (
-            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-2">
-              {ACCESSORIES.map((a) => (
-                <div key={a} className="flex items-center gap-2 text-sm text-gray-300">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-600"/> {a}
-                </div>
-              ))}
-            </div>
-          );
-        }
+                const allModels = [...new Set(initialVehicles.map(v => v.model))].sort();
+                const states = [...new Set(initialVehicles.map(v => v.state))].sort();
+                const bodies = [...new Set(initialVehicles.map(v => v.body))].sort();
+                const fuels = [...new Set(initialVehicles.map(v => v.fuel))].sort();
+                const transmissions = [...new Set(initialVehicles.map(v => v.transmission))].sort();
+                
+                return { brands, modelsByBrand, allModels, states, bodies, fuels, transmissions };
+              }, [initialVehicles]);
 
-        function StoreInfo({ v }) {
-          return (
-            <div className="grid gap-3 p-4 rounded-2xl ring-1 ring-gray-800 bg-gray-900">
-              <div className="font-semibold text-white">Conheça esse carro em nossa loja</div>
-              <div className="text-sm text-gray-300"><strong>Endereço: </strong>{v.store?.address}</div>
-              <div className="text-sm text-gray-300"><strong>Ligar: </strong><a className="underline" href={`tel:${v.store?.phone?.replace(/\D/g, "")}`}>{v.store?.phone}</a></div>
-              <div className="grid sm:grid-cols-2 gap-2 text-sm">
-                <div>
-                  <div className="text-xs text-gray-500 mb-1">Horários de funcionamento</div>
-                  <ul className="space-y-1">
-                    {v.store?.hours?.map((h)=> (
-                      <li key={h.d} className="flex justify-between"><span>{h.d}</span><span>{h.h}</span></li>
-                    ))}
-                  </ul>
-                  <div className="text-xs text-gray-500 mt-2">Recomendamos consultar horários em feriados.</div>
-                </div>
-                <div className="rounded-xl overflow-hidden ring-1 ring-gray-700 aspect-video bg-gray-800 flex items-center justify-center text-xs text-gray-500">Mapa (placeholder)</div>
-              </div>
-              <div className="flex gap-3">
-                <Button className="bg-gray-800 text-white hover:bg-gray-700">Agendar visita</Button>
-                <Button className="bg-red-600 text-white hover:bg-red-700">Tenho interesse</Button>
-              </div>
-            </div>
-          );
-        }
+              const filtered = useMemo(() => {
+                const q = query.trim().toLowerCase();
+                let list = initialVehicles.filter((v) => {
+                  const inQuery = !q || `${v.brand} ${v.model} ${v.version}`.toLowerCase().includes(q);
+                  const priceOK = v.price >= filters.priceMin && v.price <= filters.priceMax;
+                  const yearOK = v.yearModel >= filters.yearMin && v.yearModel <= filters.yearMax;
+                  const kmOK = v.km <= filters.kmMax;
+                  const brandOK = !filters.brand || v.brand === filters.brand;
+                  const modelOK = !filters.model || v.model === filters.model;
+                  const stateOK = !filters.state || v.state === filters.state;
+                  const bodyOK = !filters.body || v.body === filters.body;
+                  const fuelOK = !filters.fuel || v.fuel === filters.fuel;
+                  const transOK = !filters.transmission || v.transmission === filters.transmission;
+                  return inQuery && priceOK && yearOK && kmOK && brandOK && modelOK && stateOK && bodyOK && fuelOK && transOK;
+                });
 
-        function Gallery({ photos }) {
-          const [idx, setIdx] = useState(0);
-          return (
-            <div className="grid gap-3">
-              <div className="aspect-video rounded-2xl overflow-hidden ring-1 ring-gray-800 bg-black">
-                <img src={photos[idx]} alt="Foto do veículo" className="w-full h-full object-cover"/>
-              </div>
-              <div className="flex gap-2 overflow-x-auto pb-2">
-                {photos.map((p, i) => (
-                  <button key={p} onClick={()=> setIdx(i)} className={`h-20 aspect-video rounded-lg overflow-hidden ring-2 ring-offset-2 ring-offset-black ${i===idx?"ring-red-500":"ring-transparent"}`}>
-                    <img src={p} alt={`Foto ${i+1}`} className="w-full h-full object-cover"/>
-                  </button>
-                ))}
-              </div>
-            </div>
-          );
-        }
+                switch (sort) {
+                  case "price-asc":
+                    list = list.sort((a, b) => a.price - b.price);
+                    break;
+                  case "price-desc":
+                    list = list.sort((a, b) => b.price - b.price);
+                    break;
+                  case "km-asc":
+                    list = list.sort((a, b) => a.km - b.km);
+                    break;
+                  case "year-desc":
+                    list = list.sort((a, b) => b.yearModel - a.yearModel);
+                    break;
+                  default:
+                    list = list.sort((a, b) => (b.tags?.includes("Mais pesquisado") ? 1 : 0) - (a.tags?.includes("Mais pesquisado") ? 1 : 0));
+                }
 
-        function Recommend({ currentId }) {
-          const recs = VEHICLES.filter(v => v.id !== currentId).slice(0, 6);
-          return (
-            <section className="mt-10">
-              <h3 className="text-lg font-bold mb-3 text-white">Você também pode gostar…</h3>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {recs.map((v)=> <VehicleCard key={v.id} v={v} />)}
-              </div>
-            </section>
-          );
-        }
+                return list;
+              }, [initialVehicles, query, filters, sort]);
 
-        function Detail({ slug }) {
-          const v = VEHICLES.find((x) => x.slug === slug);
-          useEffect(() => {
-            document.title = v ? `${v.brand} ${v.model} ${v.version} ${v.yearModel} — WSA Seminovos` : "Veículo — WSA Seminovos";
-          }, [slug]);
+              const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+              const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
-          if (!v) return <main className="mx-auto max-w-7xl px-3 py-12">Veículo não encontrado.</main>;
+              useEffect(() => { setPage(1); }, [query, JSON.stringify(filters)]);
 
-          const breadcrumb = [
-            { name: "Home", href: "#/" },
-            { name: "Estoque", href: "#/estoque" },
-            { name: `${v.brand} ${v.model}`, href: `#/estoque?brand=${v.brand}&model=${v.model}` },
-          ];
+              return {
+                query, setQuery,
+                filters, setFilters,
+                sort, setSort,
+                page, setPage,
+                pageSize, totalPages,
+                list: paginated,
+                fullList: filtered,
+                uniqueOptions
+              };
+            }
 
-          return (
-            <main className="mx-auto max-w-7xl px-3 py-8">
-              {/* SEO básico e JSON-LD */}
-              <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
-                "@context": "https://schema.org",
-                "@type": "Product",
-                name: `${v.brand} ${v.model} ${v.version}`,
-                brand: v.brand,
-                model: v.model,
-                color: v.color,
-                vehicleTransmission: v.transmission,
-                vehicleEngine: v.engine,
-                vehicleSeatingCapacity: v.doors,
-                bodyType: v.body,
-                mileageFromOdometer: { "@type": "QuantitativeValue", value: v.km, unitCode: "KM" },
-                offers: {
-                  "@type": "Offer",
-                  priceCurrency: "BRL",
-                  price: v.price,
-                  availability: "https://schema.org/InStock",
-                },
-              }) }} />
-
-              <nav className="text-sm text-gray-400 mb-4">
-                {breadcrumb.map((b, i) => (
-                  <span key={b.name}>
-                    <a className="hover:text-red-500" href={b.href}>{b.name}</a>
-                    {i < breadcrumb.length - 1 && <span className="mx-2">/</span>}
-                  </span>
-                ))}
-              </nav>
-
-              <div className="grid lg:grid-cols-[1fr_400px] gap-6">
-                <Gallery photos={v.photos} />
-                <aside className="grid gap-4 self-start">
-                  <div className="p-4 rounded-2xl ring-1 ring-gray-800 bg-gray-900 grid gap-3">
-                    <div className="flex items-center justify-between">
+            // =============================
+            // COMPONENTES DE PÁGINA
+            // =============================
+            function Home({ vehicles }) {
+              return (
+                <main>
+                  <section className="bg-gradient-to-b from-gray-950 to-black">
+                    <div className="mx-auto max-w-7xl px-3 py-12 grid md:grid-cols-2 gap-10 items-center">
                       <div>
-                        <div className="text-xs text-gray-500">{v.brand}</div>
-                        <h1 className="text-2xl font-extrabold leading-tight text-white">{v.model} {v.version}</h1>
+                        <h1 className="text-3xl md:text-5xl font-extrabold leading-tight tracking-tight text-white">Seu seminovo ideal, com transparência e financiamento rápido.</h1>
+                        <p className="mt-4 text-gray-400 max-w-prose">Explore nosso estoque com filtros avançados, fotos em alta resolução e simulação de financiamento 100% digital. Agende uma visita e faça um test drive.</p>
+                        <div className="mt-6 flex gap-3">
+                          <a href="#/estoque" className="rounded-2xl bg-red-600 text-white px-5 py-3 font-semibold shadow-sm hover:bg-red-700">Ver estoque</a>
+                          <a href="#/duvidas" className="rounded-2xl bg-gray-900 text-white ring-1 ring-gray-700 hover:bg-gray-800 px-5 py-3 font-semibold shadow-sm">Tirar dúvidas</a>
+                        </div>
+                        <ul className="mt-8 grid sm:grid-cols-3 gap-3 text-sm text-gray-300">
+                          <li className="flex items-center gap-2"><Icon name="star" className="w-4 h-4 text-red-600"/> Garantia 3 a 12 meses</li>
+                          <li className="flex items-center gap-2"><Icon name="lightning" className="w-4 h-4 text-red-600"/> Aprovação rápida</li>
+                          <li className="flex items-center gap-2"><Icon name="map" className="w-4 h-4 text-red-600"/> Lojas próximas</li>
+                        </ul>
                       </div>
+                      <div className="aspect-video rounded-3xl overflow-hidden shadow-xl">
+                        <img src="https://placehold.co/1200x700/111/FFF?text=WSA+Veiculos" alt="Seminovos em destaque" className="w-full h-full object-cover" loading="lazy"/>
+                      </div>
+                    </div>
+                  </section>
+                  <section className="mx-auto max-w-7xl px-3 py-12">
+                    <h2 className="text-xl font-bold mb-4 text-white">Destaques do estoque</h2>
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {vehicles.slice(0, 6).map((v) => <VehicleCard key={v.id} v={v} />)}
+                    </div>
+                    <div className="mt-6"><a className="inline-block rounded-xl bg-gray-200 text-black hover:bg-white px-4 py-2" href="#/estoque">Ver todos ({vehicles.length})</a></div>
+                  </section>
+                </main>
+              );
+            }
+
+            function Filters({ state, setState, uniqueOptions }) {
+              const { brands, modelsByBrand, allModels, states, bodies, fuels, transmissions } = uniqueOptions;
+
+              return (
+                <aside className="grid gap-4 p-4 rounded-2xl ring-1 ring-gray-800 bg-gray-900 lg:bg-transparent lg:p-0 lg:ring-0">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-300"><Icon name="filter"/> Filtros</div>
+                  <Field label="Marca">
+                    <select className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.brand} onChange={(e)=> setState(s=>({...s, brand: e.target.value, model: ""}))}>
+                      <option value="">Todas</option>
+                      {brands.map(b => <option key={b} value={b}>{b}</option>)}
+                    </select>
+                  </Field>
+                  <Field label="Modelo">
+                    <select className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.model} onChange={(e)=> setState(s=>({...s, model: e.target.value}))}>
+                      <option value="">Todos</option>
+                      {(state.brand ? (modelsByBrand[state.brand] || []) : allModels).map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </Field>
+                  <Field label="Estado">
+                    <select className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.state} onChange={(e)=> setState(s=>({...s, state: e.target.value}))}>
+                      <option value="">Todos</option>
+                      {states.map(uf => <option key={uf} value={uf}>{uf}</option>)}
+                    </select>
+                  </Field>
+                  <Field label="Carroceria">
+                    <select className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.body} onChange={(e)=> setState(s=>({...s, body: e.target.value}))}>
+                      <option value="">Todas</option>
+                      {bodies.map(b => <option key={b} value={b}>{b}</option>)}
+                    </select>
+                  </Field>
+                  <Field label="Combustível">
+                    <select className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.fuel} onChange={(e)=> setState(s=>({...s, fuel: e.target.value}))}>
+                      <option value="">Todos</option>
+                      {fuels.map(f => <option key={f} value={f}>{f}</option>)}
+                    </select>
+                  </Field>
+                  <Field label="Câmbio">
+                    <select className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.transmission} onChange={(e)=> setState(s=>({...s, transmission: e.target.value}))}>
+                      <option value="">Todos</option>
+                      {transmissions.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </Field>
+                  <Field label={`Preço (${real(state.priceMin)} – ${real(state.priceMax)})`}>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input type="number" min={0} max={state.priceMax} className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.priceMin} onChange={(e)=> setState(s=>({...s, priceMin: Number(e.target.value||0)}))}/>
+                      <input type="number" min={state.priceMin} className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.priceMax} onChange={(e)=> setState(s=>({...s, priceMax: Number(e.target.value||0)}))}/>
+                    </div>
+                  </Field>
+                  <Field label={`Ano modelo (${state.yearMin}–${state.yearMax})`}>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input type="number" min={2015} max={state.yearMax} className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.yearMin} onChange={(e)=> setState(s=>({...s, yearMin: Number(e.target.value||0)}))}/>
+                      <input type="number" min={state.yearMin} max={2026} className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.yearMax} onChange={(e)=> setState(s=>({...s, yearMax: Number(e.target.value||0)}))}/>
+                    </div>
+                  </Field>
+                  <Field label={`Quilometragem máxima (${km(state.kmMax)})`}>
+                    <input type="range" min={10000} max={120000} step={1000} value={state.kmMax} className="accent-red-600" onChange={(e)=> setState(s=>({...s, kmMax: Number(e.target.value)}))}/>
+                  </Field>
+                  <Button className="bg-gray-200 text-black hover:bg-white" onClick={()=> setState({ brand:"", model:"", state:"", body:"", fuel:"", transmission:"", priceMin:0, priceMax:200000, yearMin:2019, yearMax:2025, kmMax:100000 })}>Limpar filtros</Button>
+                </aside>
+              );
+            }
+
+            function Toolbar({ total, sort, setSort, query, setQuery, onShowFilters }) {
+              return (
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="text-sm text-gray-400">{total} veículos</div>
+                  <div className="flex items-center gap-2">
+                    {/* <!-- Botão de Filtro para Mobile --> */}
+                    <Button className="lg:hidden bg-gray-800 text-white hover:bg-gray-700 ring-gray-700" onClick={onShowFilters}>
+                      <Icon name="filter" className="w-4 h-4 mr-1"/>
+                      Filtrar
+                    </Button>
+                    <input
+                      aria-label="Buscar no estoque"
+                      value={query}
+                      onChange={(e)=> setQuery(e.target.value)}
+                      placeholder="Buscar no estoque"
+                      className="rounded-xl border border-gray-700 bg-gray-800 text-white px-3 py-2 text-sm focus:ring-red-500 focus:border-red-500"
+                    />
+                    <select value={sort} onChange={(e)=> setSort(e.target.value)} className="rounded-xl border border-gray-700 bg-gray-800 text-white px-2 py-2 text-sm focus:ring-red-500 focus:border-red-500">
+                      <option value="relevance">Mais relevantes</option>
+                      <option value="price-asc">Menor preço</option>
+                      <option value="price-desc">Maior preço</option>
+                      <option value="km-asc">Menor km</option>
+                      <option value="year-desc">Mais novos</option>
+                    </select>
+                  </div>
+                </div>
+              );
+            }
+
+            function VehicleCard({ v }) {
+              const href = `#/carro/${v.slug}`;
+              return (
+                <a href={href} className="group rounded-2xl ring-1 ring-gray-800 bg-gray-900 overflow-hidden hover:bg-gray-800 transition">
+                  <div className="relative aspect-[4/3] overflow-hidden bg-gray-800">
+                    <img src={v.photos?.[0]} alt={`${v.brand} ${v.model}`} className="w-full h-full object-cover group-hover:scale-[1.02] transition" loading="lazy"
+                        onError={(e) => e.target.src = 'https://placehold.co/960x640/222/FFF?text=Foto+Indisponivel'}
+                    />
+                    <div className="absolute top-2 left-2 flex gap-2">
+                      {v.tags?.slice(0,2).map((t)=> <Badge key={t} className="bg-black/80 backdrop-blur text-gray-200 ring-1 ring-gray-700">{t}</Badge>)}
+                    </div>
+                  </div>
+                  <div className="p-4 grid gap-2">
+                    <div className="flex items-center justify-between">
+                      <div className="font-semibold text-white">{v.brand}</div>
                       <Badge className="bg-red-950 text-red-300 ring-1 ring-red-800">{v.yearFab}/{v.yearModel}</Badge>
                     </div>
+                    <div className="text-white text-lg font-bold leading-snug">{v.model} {v.version}</div>
                     <div className="text-sm text-gray-400">{km(v.km)} · {v.transmission} · {v.fuel}</div>
-                    <div className="flex items-end gap-2">
-                      {v.priceBase > v.price && <div className="text-sm text-gray-500 line-through">{real(v.priceBase)}</div>}
-                      <div className="text-3xl font-extrabold text-white">{real(v.price)}</div>
+                    <div className="text-xs text-gray-400 flex items-center gap-1"><Icon name="map" className="w-4 h-4"/> {v.city}/{v.state}</div>
+                    <div className="mt-2">
+                      {v.priceBase > v.price && (
+                        <div className="text-xs text-gray-500 line-through">{real(v.priceBase)}</div>
+                      )}
+                      <div className="text-xl font-extrabold text-white">{real(v.price)}</div>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button className="bg-red-600 text-white hover:bg-red-700">Tenho interesse</Button>
-                      <Button className="bg-gray-800 text-white hover:bg-gray-700">Agendar visita</Button>
+                  </div>
+                </a>
+              );
+            }
+
+            function Pagination({ page, setPage, totalPages }) {
+              if (totalPages <= 1) return null;
+              const pages = Array.from({ length: totalPages }, (_, i) => i + 1).slice(0, 7);
+              return (
+                <div className="flex items-center justify-center gap-1 mt-6">
+                  <Button className="bg-gray-800 text-white hover:bg-gray-700" onClick={()=> setPage(Math.max(1, page-1))}><Icon name="chevronLeft"/></Button>
+                  {pages.map(p => (
+                    <Button key={p} className={`bg-gray-800 text-white hover:bg-gray-700 ${p === page ? "ring-red-500 bg-red-600 text-white" : "ring-gray-700"}`} onClick={()=> setPage(p)}>{p}</Button>
+                  ))}
+                  <Button className="bg-gray-800 text-white hover:bg-gray-700" onClick={()=> setPage(Math.min(totalPages, page+1))}><Icon name="chevronRight"/></Button>
+                </div>
+              );
+            }
+            
+            function Catalog({ vehicles }) {
+              const {
+                query, setQuery,
+                filters, setFilters,
+                sort, setSort,
+                page, setPage,
+                list, fullList, totalPages,
+                uniqueOptions
+              } = useCatalog(vehicles);
+
+              const [showFilters, setShowFilters] = useState(false);
+
+              useEffect(() => {
+                document.title = `Estoque (${fullList.length}) — WSA Seminovos`;
+              }, [fullList.length]);
+
+              return (
+                <main className="mx-auto max-w-7xl px-3 py-8">
+                  <div className="grid lg:grid-cols-[280px_1fr] gap-6">
+                    
+                    {/* <!-- Filtros Mobile (Off-canvas) --> */}
+                    {showFilters && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setShowFilters(false)}></div>}
+                    <div 
+                      className={`
+                        fixed lg:sticky top-0 lg:top-[4.5rem] self-start
+                        left-0 w-80 lg:w-auto h-full lg:h-auto 
+                        bg-gray-900 lg:bg-transparent 
+                        shadow-xl lg:shadow-none 
+                        overflow-y-auto lg:overflow-visible 
+                        z-50 lg:z-10
+                        transform transition-transform
+                        ${showFilters ? 'translate-x-0' : '-translate-x-full'}
+                        lg:translate-x-0
+                      `}
+                    >
+                      <div className="flex justify-between items-center p-4 lg:hidden">
+                        <h3 className="font-semibold text-white">Filtros</h3>
+                        <Button onClick={() => setShowFilters(false)} className="bg-gray-800 text-white !p-2">
+                          <Icon name="x" className="w-4 h-4"/>
+                        </Button>
+                      </div>
+                      <Filters state={filters} setState={setFilters} uniqueOptions={uniqueOptions} />
                     </div>
-                    <div className="text-xs text-gray-500">Muitas pessoas estão pesquisando por esse carro.</div>
+
+                    <section className="grid gap-4">
+                      <Toolbar 
+                        total={fullList.length} 
+                        sort={sort} 
+                        setSort={setSort} 
+                        query={query} 
+                        setQuery={setQuery}
+                        onShowFilters={() => setShowFilters(true)}
+                      />
+                      {fullList.length === 0 ? (
+                        <div className="p-12 text-center text-gray-400 ring-1 ring-gray-800 rounded-2xl">Nenhum veículo encontrado com os filtros atuais.</div>
+                      ) : (
+                        <>
+                          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {list.map((v) => <VehicleCard key={v.id} v={v} />)}
+                          </div>
+                          <Pagination page={page} setPage={setPage} totalPages={totalPages}/>
+                        </>
+                      )}
+                    </section>
                   </div>
+                </main>
+              );
+            }
 
-                  <FinanceSimulator price={v.price} />
-                  <StoreInfo v={v} />
-                </aside>
-              </div>
+            function FinanceSimulator({ price }) {
+              const [entry, setEntry] = useState(Math.round(price * 0.2));
+              const [months, setMonths] = useState(48);
+              const [rate, setRate] = useState(1.79); // % ao mês (exemplo)
 
-              <section className="mt-8 grid gap-6">
-                <div>
-                  <h2 className="text-lg font-bold mb-2 text-white">Sobre este carro</h2>
-                  <Specs v={v} />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold mb-2 text-white">Acessórios e outros</h2>
-                  <Accessories />
-                </div>
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="p-4 rounded-2xl ring-1 ring-gray-800 bg-gray-900">
-                    <div className="font-semibold mb-1 text-white">Certificado de qualidade</div>
-                    <ul className="text-sm text-gray-300 list-disc pl-5">
-                      <li>Garantia de procedência</li>
-                      <li>Documentação em dia</li>
-                      <li>Quilometragem confiável</li>
-                      <li>Inspeção de 360 itens</li>
-                    </ul>
+              const financed = Math.max(0, price - entry);
+              const i = rate / 100;
+              const pmt = financed > 0 && i > 0 ? (financed * i) / (1 - Math.pow(1 + i, -months)) : 0;
+
+              return (
+                <div className="grid gap-3 p-4 rounded-2xl ring-1 ring-gray-800 bg-gray-900">
+                  <div className="font-semibold text-white">Simule um financiamento 100% digital</div>
+                  <div className="grid sm:grid-cols-3 gap-3 text-sm">
+                    <Field label="Entrada (R$)"><input type="number" className="rounded-lg border-gray-700 bg-gray-800 text-white w-full focus:ring-red-500 focus:border-red-500" value={entry} onChange={(e)=> setEntry(Number(e.target.value||0))}/></Field>
+                    <Field label="Parcelas (meses)"><input type="number" min={6} max={72} className="rounded-lg border-gray-700 bg-gray-800 text-white w-full focus:ring-red-500 focus:border-red-500" value={months} onChange={(e)=> setMonths(Number(e.target.value||0))}/></Field>
+                    <Field label="Taxa (% a.m.)"><input type="number" step="0.01" className="rounded-lg border-gray-700 bg-gray-800 text-white w-full focus:ring-red-500 focus:border-red-500" value={rate} onChange={(e)=> setRate(Number(e.target.value||0))}/></Field>
                   </div>
-                  <div className="p-4 rounded-2xl ring-1 ring-gray-800 bg-gray-900">
-                    <div className="font-semibold mb-2 text-white">Seu usado vale mais na troca</div>
-                    <p className="text-sm text-gray-300">Avalie seu carro usado conosco e use na entrada. Fale com nosso time de vendas para começar.</p>
-                    <div className="mt-2"><Button className="bg-gray-800 text-white hover:bg-gray-700">Avaliar meu carro</Button></div>
+                  <div className="text-sm text-gray-400">Valor financiado: <strong>{real(financed)}</strong></div>
+                  <div className="text-2xl font-extrabold text-white">Parcela estimada: {real(pmt || 0)}</div>
+                  <div className="text-xs text-gray-500">Simulação ilustrativa. Sujeito à aprovação de crédito.</div>
+                  <div className="flex gap-3 mt-2">
+                    <Button className="bg-red-600 text-white hover:bg-red-700">Quero simular</Button>
+                    <Button className="bg-gray-800 text-white hover:bg-gray-700">Falar com consultor</Button>
                   </div>
                 </div>
-              </section>
+              );
+            }
 
-              <Recommend currentId={v.id} />
-            </main>
-          );
-        }
+            function Specs({ v }) {
+              const items = [
+                { label: "Quilometragem", value: km(v.km) },
+                { label: "Ano", value: `${v.yearFab}/${v.yearModel}` },
+                { label: "Combustível", value: v.fuel },
+                { label: "Câmbio", value: v.transmission },
+                { label: "Motor", value: v.engine },
+                { label: "Final de placa", value: v.plateFinal },
+                { label: "Portas", value: String(v.doors) },
+                { label: "Cor", value: v.color },
+                { label: "Carroceria", value: v.body },
+              ];
+              return (
+                <div className="grid sm:grid-cols-3 gap-3">
+                  {items.map((it) => (
+                    <div key={it.label} className="rounded-xl ring-1 ring-gray-800 p-3 bg-gray-900">
+                      <div className="text-xs text-gray-500">{it.label}</div>
+                      <div className="font-semibold text-white">{it.value}</div>
+                    </div>
+                  ))}
+                </div>
+              );
+            }
 
-        function SimplePage({ title, children }) {
-          useEffect(() => { document.title = `${title} — WSA Seminovos`; }, [title]);
-          return (
-            <main className="mx-auto max-w-4xl px-3 py-10">
-              <h1 className="text-2xl font-extrabold mb-4 text-white">{title}</h1>
-              <div className="prose prose-invert max-w-none">
-                {children}
-              </div>
-            </main>
-          );
-        }
+            function Accessories() {
+              return (
+                <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-2">
+                  {ACCESSORIES.map((a) => (
+                    <div key={a} className="flex items-center gap-2 text-sm text-gray-300">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-600"/> {a}
+                    </div>
+                  ))}
+                </div>
+              );
+            }
 
-        // =============================
-        // ROTEAMENTO SIMPLES (#/...)
-        // =============================
-        function useHashRoute() {
-          const [hash, setHash] = useState(window.location.hash || "#/");
-          useEffect(() => {
-            const onChange = () => setHash(window.location.hash || "#/");
-            window.addEventListener("hashchange", onChange);
-            return () => window.removeEventListener("hashchange", onChange);
-          }, []);
-          return hash.replace(/^#/, "");
-        }
+            function StoreInfo({ v }) {
+              return (
+                <div className="grid gap-3 p-4 rounded-2xl ring-1 ring-gray-800 bg-gray-900">
+                  <div className="font-semibold text-white">Conheça esse carro em nossa loja</div>
+                  <div className="text-sm text-gray-300"><strong>Endereço: </strong>{v.store?.address}</div>
+                  <div className="text-sm text-gray-300"><strong>Ligar: </strong><a className="underline" href={`tel:${v.store?.phone?.replace(/\D/g, "")}`}>{v.store?.phone}</a></div>
+                  <div className="grid sm:grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <div className="text-xs text-gray-500 mb-1">Horários de funcionamento</div>
+                      <ul className="space-y-1">
+                        {v.store?.hours?.map((h)=> (
+                          <li key={h.d} className="flex justify-between"><span>{h.d}</span><span>{h.h}</span></li>
+                        ))}
+                      </ul>
+                      <div className="text-xs text-gray-500 mt-2">Recomendamos consultar horários em feriados.</div>
+                    </div>
+                    <div className="rounded-xl overflow-hidden ring-1 ring-gray-700 aspect-video bg-gray-800 flex items-center justify-center text-xs text-gray-500">Mapa (placeholder)</div>
+                  </div>
+                  <div className="flex gap-3">
+                    <Button className="bg-gray-800 text-white hover:bg-gray-700">Agendar visita</Button>
+                    <Button className="bg-red-600 text-white hover:bg-red-700">Tenho interesse</Button>
+                  </div>
+                </div>
+              );
+            }
 
-        function Router() {
-          const route = useHashRoute();
+            function Gallery({ photos }) {
+              const [idx, setIdx] = useState(0);
+              return (
+                <div className="grid gap-3">
+                  <div className="aspect-video rounded-2xl overflow-hidden ring-1 ring-gray-800 bg-black">
+                    <img src={photos[idx]} alt="Foto do veículo" className="w-full h-full object-cover"
+                        onError={(e) => e.target.src = 'https://placehold.co/960x640/222/FFF?text=Foto+Indisponivel'}
+                    />
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {photos.map((p, i) => (
+                      <button key={p} onClick={()=> setIdx(i)} className={`h-20 aspect-video rounded-lg overflow-hidden ring-2 ring-offset-2 ring-offset-black ${i===idx?"ring-red-500":"ring-transparent"}`}>
+                        <img src={p} alt={`Foto ${i+1}`} className="w-full h-full object-cover"
+                            onError={(e) => e.target.src = 'https://placehold.co/160x90/222/FFF?text=Erro'}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            }
 
-          if (route.startsWith("/carro/")) {
-            const slug = route.split("/carro/")[1];
-            return <Detail slug={slug} />;
-          }
-          if (route.startsWith("/estoque")) return <Catalog/>;
-          if (route.startsWith("/lojas")) return <SimplePage title="Nossas lojas">Em breve: lista de lojas por UF e cidade, com horários e agendamento.</SimplePage>;
-          if (route.startsWith("/duvidas")) return <SimplePage title="Dúvidas">Em breve: perguntas frequentes sobre financiamento, troca com usado e garantia.</SimplePage>;
-          if (route.startsWith("/vantagens")) return <SimplePage title="Vantagens e benefícios">Em breve: página institucional de benefícios e diferenciais.</SimplePage>;
-          return <Home/>;
-        }
+            function Recommend({ currentId, vehicles }) {
+              const recs = vehicles.filter(v => v.id !== currentId).slice(0, 6);
+              return (
+                <section className="mt-10">
+                  <h3 className="text-lg font-bold mb-3 text-white">Você também pode gostar…</h3>
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {recs.map((v)=> <VehicleCard key={v.id} v={v} />)}
+                  </div>
+                </section>
+              );
+            }
 
-        // =============================
-        // APP RAIZ
-        // =============================
-        // Removemos o "export default"
-        function DealershipCatalogApp() {
-          // Para SEO: título padrão
-          useEffect(() => { document.title = "WSA Seminovos — Catálogo"; }, []);
+            // *** NOVO COMPONENTE: AVISO DE LOGIN (FUNIL) ***
+            function LoginPrompt({ slug, v }) {
+               useEffect(() => {
+                document.title = v ? `Login para ver ${v.brand} ${v.model} — WSA Seminovos` : "Login — WSA Seminovos";
+                window.scrollTo(0, 0); 
+              }, [v]);
 
-          const handleSearch = (q) => {
-            window.location.hash = "#/estoque";
-            // dispatch custom event to update query in Catalog via localStorage
-            localStorage.setItem("wsa_query", q);
-            window.dispatchEvent(new Event("wsa-search"));
-          };
+              if (!v) return <LoadingScreen />;
 
-          // Bridge para sincronizar a query digitada no Header com o Catalog
-          useEffect(() => {
-            const on = () => {
-              const input = document.querySelector("input[aria-label='Buscar no estoque']");
-              const q = localStorage.getItem("wsa_query") || "";
-              if (input) {
-                input.value = q;
-                input.dispatchEvent(new Event("input", { bubbles: true }));
+              return (
+                <main className="mx-auto max-w-4xl px-3 py-10 text-center">
+                    <div className="rounded-2xl ring-1 ring-gray-800 bg-gray-900 p-8">
+                        <h1 className="text-2xl font-extrabold mb-4 text-white">
+                            Acesse para ver todos os detalhes
+                        </h1>
+                        <p className="text-gray-400 mb-6 max-w-md mx-auto">
+                            Para ver a galeria de fotos completa, detalhes da loja e simular o financiamento deste <strong>{v.brand} {v.model} {v.version}</strong>, por favor, crie uma conta ou faça login.
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                            <a href="#/login" className="rounded-2xl bg-red-600 text-white px-5 py-3 font-semibold shadow-sm hover:bg-red-700 w-full sm:w-auto">
+                                Fazer Login
+                            </a>
+                            <a href="#/register" className="rounded-2xl bg-gray-800 text-white ring-1 ring-gray-700 hover:bg-gray-700 px-5 py-3 font-semibold shadow-sm w-full sm:w-auto">
+                                Criar Conta (Grátis)
+                            </a>
+                        </div>
+                    </div>
+                </main>
+              );
+            }
+
+            // *** NOVOS COMPONENTES: PÁGINAS DE LOGIN E CADASTRO ***
+            function LoginPage({ db }) {
+              const [email, setEmail] = useState("");
+              const [password, setPassword] = useState("");
+              const [error, setError] = useState("");
+              const [loading, setLoading] = useState(false);
+
+              const handleLogin = async (e) => {
+                e.preventDefault();
+                setError("");
+                setLoading(true);
+                try {
+                  await firebase.auth().signInWithEmailAndPassword(email, password);
+                  // O onAuthStateChanged no App raiz vai cuidar do resto
+                  window.location.hash = "#/"; // Volta para a Home
+                } catch (err) {
+                  setError("Falha no login. Verifique seu e-mail e senha.");
+                  console.error("Erro de login:", err);
+                }
+                setLoading(false);
+              };
+              
+              useEffect(() => { document.title = `Login — WSA Seminovos`; }, []);
+
+              return (
+                <main className="mx-auto max-w-sm px-3 py-10">
+                    <div className="rounded-2xl ring-1 ring-gray-800 bg-gray-900 p-8">
+                        <h1 className="text-2xl font-extrabold mb-6 text-white text-center">Login</h1>
+                        {error && <p className="text-red-400 bg-red-950 p-3 rounded-lg mb-4 text-sm">{error}</p>}
+                        <form onSubmit={handleLogin} className="grid gap-4">
+                            <Field label="E-mail">
+                                <input 
+                                    type="email" 
+                                    value={email} 
+                                    onChange={(e) => setEmail(e.target.value)} 
+                                    className="rounded-lg border-gray-700 bg-gray-800 text-white w-full focus:ring-red-500 focus:border-red-500" 
+                                    required 
+                                />
+                            </Field>
+                            <Field label="Senha">
+                                <input 
+                                    type="password" 
+                                    value={password} 
+                                    onChange={(e) => setPassword(e.target.value)} 
+                                    className="rounded-lg border-gray-700 bg-gray-800 text-white w-full focus:ring-red-500 focus:border-red-500" 
+                                    required 
+                                />
+                            </Field>
+                            <Button type="submit" className="bg-red-600 text-white hover:bg-red-700 w-full" disabled={loading}>
+                                {loading ? "Entrando..." : "Entrar"}
+                            </Button>
+                        </form>
+                        <p className="text-sm text-gray-400 mt-6 text-center">
+                            Não tem uma conta? <a href="#/register" className="text-red-500 hover:underline">Cadastre-se</a>
+                        </p>
+                    </div>
+                </main>
+              );
+            }
+
+            function RegisterPage({ db }) {
+              const [email, setEmail] = useState("");
+              const [password, setPassword] = useState("");
+              const [error, setError] = useState("");
+              const [loading, setLoading] = useState(false);
+
+              const handleRegister = async (e) => {
+                e.preventDefault();
+                setError("");
+                setLoading(true);
+                try {
+                  const { user } = await firebase.auth().createUserWithEmailAndPassword(email, password);
+                  
+                  // ** IMPORTANTE: Cria o "papel" (role) do usuário no Firestore **
+                  // Usamos uma coleção "users" separada, fora de /artifacts/
+                  const userRef = db.collection('users').doc(user.uid);
+                  await userRef.set({
+                    email: user.email,
+                    role: 'client', // Todo novo usuário é 'client'
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                  });
+
+                  // O onAuthStateChanged no App raiz vai cuidar do resto
+                  window.location.hash = "#/"; // Volta para a Home
+                } catch (err) {
+                  if (err.code === 'auth/email-already-in-use') {
+                    setError("Este e-mail já está em uso. Tente fazer login.");
+                  } else {
+                    setError("Falha no cadastro. Tente novamente.");
+                  }
+                  console.error("Erro de cadastro:", err);
+                }
+                setLoading(false);
+              };
+              
+              useEffect(() => { document.title = `Cadastro — WSA Seminovos`; }, []);
+
+              return (
+                <main className="mx-auto max-w-sm px-3 py-10">
+                    <div className="rounded-2xl ring-1 ring-gray-800 bg-gray-900 p-8">
+                        <h1 className="text-2xl font-extrabold mb-6 text-white text-center">Criar Conta</h1>
+                        {error && <p className="text-red-400 bg-red-950 p-3 rounded-lg mb-4 text-sm">{error}</p>}
+                        <form onSubmit={handleRegister} className="grid gap-4">
+                            <Field label="E-mail">
+                                <input 
+                                    type="email" 
+                                    value={email} 
+                                    onChange={(e) => setEmail(e.target.value)} 
+                                    className="rounded-lg border-gray-700 bg-gray-800 text-white w-full focus:ring-red-500 focus:border-red-500" 
+                                    required 
+                                />
+                            </Field>
+                            <Field label="Senha (mínimo 6 caracteres)">
+                                <input 
+                                    type="password" 
+                                    value={password} 
+                                    onChange={(e) => setPassword(e.target.value)} 
+                                    className="rounded-lg border-gray-700 bg-gray-800 text-white w-full focus:ring-red-500 focus:border-red-500" 
+                                    required 
+                                />
+                            </Field>
+                            <Button type="submit" className="bg-red-600 text-white hover:bg-red-700 w-full" disabled={loading}>
+                                {loading ? "Criando..." : "Criar Conta"}
+                            </Button>
+                        </form>
+                        <p className="text-sm text-gray-400 mt-6 text-center">
+                            Já tem uma conta? <a href="#/login" className="text-red-500 hover:underline">Faça login</a>
+                        </p>
+                    </div>
+                </main>
+              );
+            }
+
+
+            function Detail({ slug, vehicles, user }) { // Recebe o usuário
+              const v = vehicles.find((x) => x.slug === slug);
+              
+              useEffect(() => {
+                document.title = v ? `${v.brand} ${v.model} ${v.version} ${v.yearModel} — WSA Seminovos` : "Veículo — WSA Seminovos";
+                window.scrollTo(0, 0); // Rola para o topo ao trocar de página
+              }, [v]);
+
+              // ** LÓGICA DO FUNIL **
+              // Se o usuário for um 'visitor' (anônimo), mostre o aviso de login
+              if (user && user.profile && user.profile.role === 'visitor') {
+                 return <LoginPrompt slug={slug} v={v} />;
               }
-            };
-            window.addEventListener("wsa-search", on);
-            return () => window.removeEventListener("wsa-search", on);
-          }, []);
 
-          return (
-            <div className="min-h-screen grid grid-rows-[auto_1fr_auto] bg-black text-gray-200">
-              <TopBar/>
-              <Header onSearch={handleSearch}/>
-              <Router/>
-              <Footer/>
-            </div>
-          );
-        }
+              if (!v) return <main className="mx-auto max-w-7xl px-3 py-12 text-white">Veículo não encontrado ou carregando...</main>;
 
-        // =============================
-        // 6. CÓDIGO DE INICIALIZAÇÃO DO REACT
-        // =============================
-        const container = document.getElementById('root');
-        const root = ReactDOM.createRoot(container);
-        root.render(<DealershipCatalogApp />);
+              // Se passou da verificação, o usuário está logado (cliente ou admin)
+              const breadcrumb = [
+                { name: "Home", href: "#/" },
+                { name: "Estoque", href: "#/estoque" },
+                { name: `${v.brand} ${v.model}`, href: `#` }, // Link não clicável
+              ];
+
+              return (
+                <main className="mx-auto max-w-7xl px-3 py-8">
+                  {/* SEO básico e JSON-LD */}
+                  <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+                    "@context": "https://schema.org",
+                    "@type": "Product",
+                    name: `${v.brand} ${v.model} ${v.version}`,
+                    brand: v.brand,
+                    model: v.model,
+                    color: v.color,
+                    vehicleTransmission: v.transmission,
+                    vehicleEngine: v.engine,
+                    vehicleSeatingCapacity: v.doors,
+                    bodyType: v.body,
+                    mileageFromOdometer: { "@type": "QuantitativeValue", value: v.km, unitCode: "KM" },
+                    offers: {
+                      "@type": "Offer",
+                      priceCurrency: "BRL",
+                      price: v.price,
+                      availability: "https://schema.org/InStock",
+                    },
+                  }) }} />
+
+                  <nav className="text-sm text-gray-400 mb-4">
+                    {breadcrumb.map((b, i) => (
+                      <span key={b.name}>
+                        <a className="hover:text-red-500" href={b.href}>{b.name}</a>
+                        {i < breadcrumb.length - 1 && <span className="mx-2">/</span>}
+                      </span>
+                    ))}
+                  </nav>
+
+                  <div className="grid lg:grid-cols-[1fr_400px] gap-6">
+                    <Gallery photos={v.photos} />
+                    <aside className="grid gap-4 self-start">
+                      <div className="p-4 rounded-2xl ring-1 ring-gray-800 bg-gray-900 grid gap-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-xs text-gray-500">{v.brand}</div>
+                            <h1 className="text-2xl font-extrabold leading-tight text-white">{v.model} {v.version}</h1>
+                          </div>
+                          <Badge className="bg-red-950 text-red-300 ring-1 ring-red-800">{v.yearFab}/{v.yearModel}</Badge>
+                        </div>
+                        <div className="text-sm text-gray-400">{km(v.km)} · {v.transmission} · {v.fuel}</div>
+                        <div className="flex items-end gap-2">
+                          {v.priceBase > v.price && <div className="text-sm text-gray-500 line-through">{real(v.priceBase)}</div>}
+                          <div className="text-3xl font-extrabold text-white">{real(v.price)}</div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button className="bg-red-600 text-white hover:bg-red-700">Tenho interesse</Button>
+                          <Button className="bg-gray-800 text-white hover:bg-gray-700">Agendar visita</Button>
+                        </div>
+                        <div className="text-xs text-gray-500">Muitas pessoas estão pesquisando por esse carro.</div>
+                      </div>
+
+                      <FinanceSimulator price={v.price} />
+                      <StoreInfo v={v} />
+                    </aside>
+                  </div>
+
+                  <section className="mt-8 grid gap-6">
+                    <div>
+                      <h2 className="text-lg font-bold mb-2 text-white">Sobre este carro</h2>
+                      <Specs v={v} />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold mb-2 text-white">Acessórios e outros</h2>
+                      <Accessories />
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div className="p-4 rounded-2xl ring-1 ring-gray-800 bg-gray-900">
+                        <div className="font-semibold mb-1 text-white">Certificado de qualidade</div>
+                        <ul className="text-sm text-gray-300 list-disc pl-5">
+                          <li>Garantia de procedência</li>
+                          <li>Documentação em dia</li>
+                          <li>Quilometragem confiável</li>
+                          <li>Inspeção de 360 itens</li>
+                        </ul>
+                      </div>
+                      <div className="p-4 rounded-2xl ring-1 ring-gray-800 bg-gray-900">
+                        <div className="font-semibold mb-2 text-white">Seu usado vale mais na troca</div>
+                        <p className="text-sm text-gray-300">Avalie seu carro usado conosco e use na entrada. Fale com nosso time de vendas para começar.</p>
+                        <div className="mt-2"><Button className="bg-gray-800 text-white hover:bg-gray-700">Avaliar meu carro</Button></div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <Recommend currentId={v.id} vehicles={vehicles} />
+                </main>
+              );
+            }
+
+            function SimplePage({ title, children }) {
+              useEffect(() => { document.title = `${title} — WSA Seminovos`; }, [title]);
+              return (
+                <main className="mx-auto max-w-4xl px-3 py-10">
+                  <h1 className="text-2xl font-extrabold mb-4 text-white">{title}</h1>
+                  <div className="prose prose-invert max-w-none">
+                    {children}
+                  </div>
+                </main>
+              );
+            }
+
+            // =============================
+            // ROTEAMENTO SIMPLES (#/...)
+            // =============================
+            function useHashRoute() {
+              const [hash, setHash] = useState(window.location.hash || "#/");
+              useEffect(() => {
+                const onChange = () => setHash(window.location.hash || "#/");
+                window.addEventListener("hashchange", onChange);
+                return () => window.removeEventListener("hashchange", onChange);
+              }, []);
+              return hash.replace(/^#/, "");
+            }
+
+            function Router({ vehicles, user, db }) { // Recebe o usuário e o db
+              const route = useHashRoute();
+              
+              // Novas rotas de autenticação
+              if (route.startsWith("/login")) return <LoginPage db={db} />;
+              if (route.startsWith("/register")) return <RegisterPage db={db} />;
+
+              // Rotas protegidas (ex: /admin) podem vir aqui no futuro
+
+              // Rotas públicas
+              if (route.startsWith("/carro/")) {
+                const slug = route.split("/carro/")[1];
+                return <Detail slug={slug} vehicles={vehicles} user={user} />;
+              }
+              if (route.startsWith("/estoque")) return <Catalog vehicles={vehicles} />;
+              if (route.startsWith("/lojas")) return <SimplePage title="Nossas lojas">Em breve: lista de lojas por UF e cidade, com horários e agendamento.</SimplePage>;
+              if (route.startsWith("/duvidas")) return <SimplePage title="Dúvidas">Em breve: perguntas frequentes sobre financiamento, troca com usado e garantia.</SimplePage>;
+              if (route.startsWith("/vantagens")) return <SimplePage title="Vantagens e benefícios">Em breve: página institucional de benefícios e diferenciais.</SimplePage>;
+              return <Home vehicles={vehicles} />;
+            }
+
+            // =============================
+            // APP RAIZ
+            // =============================
+            function DealershipCatalogApp() {
+              // Estado para o Firebase
+              const [db, setDb] = useState(null);
+              const [auth, setAuth] = useState(null);
+              const [appId, setAppId] = useState('default-app-id');
+              
+              // Estado dos dados
+              const [vehicles, setVehicles] = useState([]);
+              
+              // Estado de autenticação e carregamento
+              const [user, setUser] = useState(null); // Vai guardar { auth, profile }
+              const [isLoadingData, setIsLoadingData] = useState(true);
+              const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+
+              // 1. Inicializa o Firebase
+              useEffect(() => {
+                try {
+                    const firebaseConfig = {
+                      apiKey: "AIzaSyCkCIttysdLHMbEr4xfBoIHrMT6-khSrRk",
+                      authDomain: "wsa-site-concessionaria.firebaseapp.com",
+                      projectId: "wsa-site-concessionaria",
+                      storageBucket: "wsa-site-concessionaria.firebasestorage.app",
+                      messagingSenderId: "860029979435",
+                      appId: "1:860029979435:web:72fb9c7e622119e9f9936e",
+                      measurementId: "G-N9KZGZ7PZB"
+                    };
+                    
+                    const appIdValue = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                    
+                    if (firebase.apps.length === 0) {
+                        const app = firebase.initializeApp(firebaseConfig); 
+                        const appAuth = firebase.auth(app); 
+                        const firestoreDb = firebase.firestore(app); 
+                        
+                        firebase.firestore.setLogLevel('Debug'); 
+                        setDb(firestoreDb);
+                        setAuth(appAuth);
+                        setAppId(appIdValue);
+                    } else {
+                        const app = firebase.apps[0];
+                        setAuth(firebase.auth(app));
+                        setDb(firebase.firestore(app));
+                        setAppId(appIdValue);
+                    }
+                } catch (e) {
+                    console.error("Erro ao inicializar o Firebase. Verifique a configuração.", e);
+                    setIsLoadingAuth(false); 
+                    setIsLoadingData(false);
+                }
+              }, []);
+
+              // 2. Gerencia o estado de Autenticação (usuário logado)
+              useEffect(() => {
+                if (!auth || !db) return; // Espera o auth e db estarem prontos
+
+                let userProfileUnsubscribe = null; // Listener para o perfil do usuário
+
+                const authUnsubscribe = auth.onAuthStateChanged((userAuth) => {
+                    // Limpa o listener de perfil anterior
+                    if (userProfileUnsubscribe) {
+                        userProfileUnsubscribe();
+                        userProfileUnsubscribe = null;
+                    }
+                    
+                    if (userAuth) {
+                        // Usuário logado
+                        if (userAuth.isAnonymous) {
+                            // É um visitante anônimo
+                            setUser({ auth: userAuth, profile: { role: 'visitor' } });
+                            setIsLoadingAuth(false);
+                        } else {
+                            // É um usuário cadastrado (Cliente ou Admin)
+                            // Precisamos buscar o "papel" (role) dele no Firestore
+                            const userRef = db.collection('users').doc(userAuth.uid);
+                            userProfileUnsubscribe = userRef.onSnapshot((doc) => {
+                                if (doc.exists) {
+                                    // Encontrou o perfil
+                                    setUser({ auth: userAuth, profile: doc.data() });
+                                } else {
+                                    // Usuário cadastrado mas sem perfil (ex: acabou de se registrar)
+                                    // Assume 'client' por padrão
+                                    setUser({ auth: userAuth, profile: { role: 'client', email: userAuth.email } });
+                                }
+                                setIsLoadingAuth(false);
+                            }, (error) => {
+                                console.error("Erro ao buscar perfil do usuário:", error);
+                                // Se der erro, assume 'client' para não travar
+                                setUser({ auth: userAuth, profile: { role: 'client', email: userAuth.email } });
+                                setIsLoadingAuth(false);
+                            });
+                        }
+                    } else {
+                        // Usuário deslogado. Tenta logar anonimamente.
+                        console.log("Usuário não logado, tentando login anônimo...");
+                        auth.signInAnonymously().catch(err => {
+                            console.error("Erro no login anônimo:", err);
+                            setIsLoadingAuth(false);
+                        });
+                    }
+                });
+
+                return () => {
+                    authUnsubscribe();
+                    if (userProfileUnsubscribe) userProfileUnsubscribe();
+                };
+              }, [auth, db]);
+
+              // 3. Busca os dados dos Veículos
+              useEffect(() => {
+                if (!db) return; 
+                
+                const collectionPath = `/artifacts/${appId}/public/data/vehicles`;
+                console.log(`Iniciando listener em ${collectionPath}`);
+
+                const vehiclesCol = db.collection(collectionPath); 
+                
+                const unsubscribe = vehiclesCol.onSnapshot((snapshot) => { 
+                    const vehiclesData = snapshot.docs.map(doc => ({
+                        ...doc.data(),
+                        id: doc.id 
+                    }));
+                    console.log(`Dados recebidos: ${vehiclesData.length} veículos.`);
+                    setVehicles(vehiclesData);
+                    setIsLoadingData(false);
+                }, (error) => {
+                    console.error("Erro ao buscar dados do Firestore: ", error);
+                    setIsLoadingData(false);
+                });
+
+                return () => unsubscribe();
+              }, [db, appId]); 
+
+              // 4. Função de UPLOAD (Seed)
+              useEffect(() => {
+                if (!db) return;
+
+                window.seedDatabase = async () => {
+                    console.log("Iniciando o Seed do banco de dados...");
+                    const collectionPath = `/artifacts/${appId}/public/data/vehicles`;
+                    
+                    const existingData = await db.collection(collectionPath).get(); 
+                    if (existingData.size > 0) {
+                        console.warn(`A coleção ${collectionPath} já contém ${existingData.size} documentos. O Seed foi cancelado para evitar duplicatas.`);
+                        alert(`O banco de dados já parece ter dados. O upload foi cancelado.`);
+                        return;
+                    }
+
+                    console.log("Banco de dados vazio. Iniciando upload em lote...");
+                    const batch = db.batch(); 
+                    
+                    MOCK_VEHICLES_FOR_SEEDING.forEach(vehicle => {
+                        const docRef = db.doc(`${collectionPath}/${vehicle.id.toString()}`); 
+                        batch.set(docRef, vehicle); 
+                    });
+
+                    try {
+                        await batch.commit(); 
+                        console.log(`SUCESSO! ${MOCK_VEHICLES_FOR_SEEDING.length} veículos foram cadastrados.`);
+                        alert(`Sucesso! ${MOCK_VEHICLES_FOR_SEEDING.length} veículos foram cadastrados.`);
+                    } catch (e) {
+                        console.error("Erro ao enviar dados em lote: ", e);
+                        alert("Ocorreu um erro ao fazer o upload dos dados. Verifique o console.");
+                    }
+                };
+                console.log("Função de upload pronta. Digite 'seedDatabase()' no console para popular o banco.");
+              }, [db, appId]);
+
+
+              // 5. Função de Logout
+              const handleSignOut = () => {
+                if (auth) {
+                    auth.signOut();
+                    // O onAuthStateChanged vai pegar o logout e logar anonimamente
+                    window.location.hash = "#/"; // Volta para home
+                }
+              };
+
+              // ... (resto do App, handleSearch, etc., sem alteração) ...
+              useEffect(() => { document.title = "WSA Seminovos — Catálogo"; }, []);
+
+              const handleSearch = (q) => {
+                window.location.hash = "#/estoque";
+                localStorage.setItem("wsa_query", q);
+                window.dispatchEvent(new Event("wsa-search"));
+              };
+
+              useEffect(() => {
+                const on = () => {
+                  const input = document.querySelector("input[aria-label='Buscar no estoque']");
+                  const q = localStorage.getItem("wsa_query") || "";
+                  if (input) {
+                    input.value = q;
+                    input.dispatchEvent(new Event("input", { bubbles: true }));
+                  }
+                };
+                window.addEventListener("wsa-search", on);
+                return () => window.removeEventListener("wsa-search", on);
+              }, []);
+
+              // Espera tanto os dados quanto a autenticação carregarem
+              if (isLoadingData || isLoadingAuth) {
+                return <LoadingScreen />;
+              }
+
+              return (
+                <div className="min-h-screen grid grid-rows-[auto_1fr_auto] bg-black text-gray-200">
+                  <TopBar/>
+                  <Header onSearch={handleSearch} user={user} onSignOut={handleSignOut} />
+                  <Router vehicles={vehicles} user={user} db={db} />
+                  <Footer/>
+                </div>
+              );
+            }
+
+            // =============================
+            // 7. CÓDIGO DE INICIALIZAÇÃO DO REACT
+            // =============================
+            const container = document.getElementById('root');
+            if (container) {
+              try {
+                const root = ReactDOM.createRoot(container);
+                root.render(<DealershipCatalogApp />);
+              } catch (e) {
+                console.error("Erro ao renderizar o React:", e);
+                container.innerHTML = `<div style="color: red; padding: 20px; text-align: center; font-family: sans-serif;">
+                    <h1>Erro ao carregar o aplicativo</h1><p>${e.message}</p>
+                  </div>`;
+              }
+            } else {
+              console.error("Erro fatal: <div id='root'> não encontrado.");
+            }
+        
+        } // Fim da função main()
+        
+        // Espera a JANELA carregar antes de executar a função main()
+        window.onload = main;
 
     </script>
 </body>
