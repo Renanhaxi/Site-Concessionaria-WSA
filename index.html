@@ -343,6 +343,11 @@
         // =============================
         function Icon({ name, className = "w-5 h-5" }) {
           const icons = {
+            menu: (
+              <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+                <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/>
+              </svg>
+            ),
             heart: (
               <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
                 <path d="M12 21s-6.716-4.53-9.33-7.144A5.25 5.25 0 1 1 12 6.337a5.25 5.25 0 1 1 9.33 7.52C18.716 16.47 12 21 12 21z"/>
@@ -443,6 +448,8 @@
 
         function Header({ onSearch, initialQuery = "" }) {
           const [q, setQ] = useState(initialQuery);
+          const [isMenuOpen, setIsMenuOpen] = useState(false);
+
           return (
             <header className="sticky top-0 z-40 backdrop-blur bg-black/80 border-b border-gray-800">
               <div className="mx-auto max-w-7xl px-3">
@@ -472,7 +479,30 @@
                     <a href="#/duvidas" className="text-gray-300 hover:text-red-500">Dúvidas</a>
                     <a href="#/contato" className="rounded-lg bg-red-600 text-white px-3 py-1.5 hover:bg-red-700">Falar no WhatsApp</a>
                   </nav>
+                  {/* <!-- Botão Hamburger para Mobile --> */}
+                  <div className="md:hidden">
+                    <button 
+                      onClick={() => setIsMenuOpen(!isMenuOpen)} 
+                      className="p-2 rounded-md text-gray-300 hover:bg-gray-800"
+                      aria-label="Abrir menu"
+                      aria-expanded={isMenuOpen}
+                    >
+                      {isMenuOpen ? <Icon name="x" /> : <Icon name="menu" />}
+                    </button>
+                  </div>
                 </div>
+
+                {/* <!-- Menu Mobile Dropdown --> */}
+                {isMenuOpen && (
+                  <div className="md:hidden absolute top-full left-0 right-0 bg-black border-b border-gray-800 shadow-lg z-50 p-4">
+                    <nav className="flex flex-col gap-4 text-sm">
+                      <a href="#/estoque" className="text-gray-300 hover:text-red-500 p-2 rounded-md hover:bg-gray-800" onClick={() => setIsMenuOpen(false)}>Estoque</a>
+                      <a href="#/lojas" className="text-gray-300 hover:text-red-500 p-2 rounded-md hover:bg-gray-800" onClick={() => setIsMenuOpen(false)}>Lojas</a>
+                      <a href="#/duvidas" className="text-gray-300 hover:text-red-500 p-2 rounded-md hover:bg-gray-800" onClick={() => setIsMenuOpen(false)}>Dúvidas</a>
+                      <a href="#/contato" className="rounded-lg bg-red-600 text-white px-3 py-2 text-center hover:bg-red-700" onClick={() => setIsMenuOpen(false)}>Falar no WhatsApp</a>
+                    </nav>
+                  </div>
+                )}
               </div>
             </header>
           );
@@ -633,7 +663,8 @@
           const transmissions = Array.from(new Set(VEHICLES.map(v => v.transmission))).sort();
 
           return (
-            <aside className="sticky top-[4.5rem] self-start grid gap-4 p-4 rounded-2xl ring-1 ring-gray-800 bg-gray-900">
+            // <!-- Filtros: removido 'sticky top-[4.5rem] self-start' daqui, será controlado pelo Catalog -->
+            <aside className="grid gap-4 p-4 rounded-2xl ring-1 ring-gray-800 bg-gray-900 lg:bg-transparent lg:p-0 lg:ring-0">
               <div className="flex items-center gap-2 text-sm font-semibold text-gray-300"><Icon name="filter"/> Filtros</div>
               <Field label="Marca">
                 <select className="rounded-lg border-gray-700 bg-gray-800 text-white focus:ring-red-500 focus:border-red-500" value={state.brand} onChange={(e)=> setState(s=>({...s, brand: e.target.value, model: ""}))}>
@@ -691,11 +722,16 @@
           );
         }
 
-        function Toolbar({ total, sort, setSort, query, setQuery }) {
+        function Toolbar({ total, sort, setSort, query, setQuery, onShowFilters }) {
           return (
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="text-sm text-gray-400">{total} veículos</div>
               <div className="flex items-center gap-2">
+                {/* <!-- Botão de Filtro para Mobile --> */}
+                <Button className="lg:hidden bg-gray-800 text-white hover:bg-gray-700 ring-gray-700" onClick={onShowFilters}>
+                  <Icon name="filter" className="w-4 h-4 mr-1"/>
+                  Filtrar
+                </Button>
                 <input
                   aria-label="Buscar no estoque"
                   value={query}
@@ -758,6 +794,8 @@
           );
         }
 
+        // ***** CORREÇÃO AQUI *****
+        // Adicionando a definição da função Catalog() que foi removida
         function Catalog() {
           const modelsByBrand = useMemo(() => {
             const map = {};
@@ -777,6 +815,8 @@
             list, fullList, totalPages
           } = useCatalog(VEHICLES);
 
+          const [showFilters, setShowFilters] = useState(false);
+
           useEffect(() => {
             document.title = `Estoque (${fullList.length}) — WSA Seminovos`;
           }, [fullList.length]);
@@ -784,9 +824,40 @@
           return (
             <main className="mx-auto max-w-7xl px-3 py-8">
               <div className="grid lg:grid-cols-[280px_1fr] gap-6">
-                <Filters state={filters} setState={setFilters} modelsByBrand={modelsByBrand} />
+                
+                {/* <!-- Filtros Mobile (Off-canvas) --> */}
+                {showFilters && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setShowFilters(false)}></div>}
+                <div 
+                  className={`
+                    fixed lg:sticky top-0 lg:top-[4.5rem] self-start
+                    left-0 w-80 lg:w-auto h-full lg:h-auto 
+                    bg-gray-900 lg:bg-transparent 
+                    shadow-xl lg:shadow-none 
+                    overflow-y-auto lg:overflow-visible 
+                    z-50 lg:z-10
+                    transform transition-transform
+                    ${showFilters ? 'translate-x-0' : '-translate-x-full'}
+                    lg:translate-x-0
+                  `}
+                >
+                  <div className="flex justify-between items-center p-4 lg:hidden">
+                    <h3 className="font-semibold text-white">Filtros</h3>
+                    <Button onClick={() => setShowFilters(false)} className="bg-gray-800 text-white !p-2">
+                      <Icon name="x" className="w-4 h-4"/>
+                    </Button>
+                  </div>
+                  <Filters state={filters} setState={setFilters} modelsByBrand={modelsByBrand} />
+                </div>
+
                 <section className="grid gap-4">
-                  <Toolbar total={fullList.length} sort={sort} setSort={setSort} query={query} setQuery={setQuery}/>
+                  <Toolbar 
+                    total={fullList.length} 
+                    sort={sort} 
+                    setSort={setSort} 
+                    query={query} 
+                    setQuery={setQuery}
+                    onShowFilters={() => setShowFilters(true)}
+                  />
                   {fullList.length === 0 ? (
                     <div className="p-12 text-center text-gray-400 ring-1 ring-gray-800 rounded-2xl">Nenhum veículo encontrado com os filtros atuais.</div>
                   ) : (
