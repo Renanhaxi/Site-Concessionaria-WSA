@@ -322,23 +322,14 @@
               },
             ];
 
-            // Adiciona o slug a cada veículo
             MOCK_VEHICLES_FOR_SEEDING.forEach(v => {
                 v.slug = `${slugify(`${v.brand} ${v.model} ${v.version}`)}-${v.id}`;
             });
 
             const ACCESSORIES = [
-              "Alarme",
-              "Ar-condicionado",
-              "Banco do motorista com ajuste de altura",
-              "Computador de bordo",
-              "Desembaçador traseiro",
-              "Direção elétrica",
-              "Distribuição eletrônica de frenagem",
-              "Freio ABS",
-              "Sensor de estacionamento",
-              "Travas elétricas",
-              "Volante com regulagem de altura",
+              "Alarme", "Ar-condicionado", "Banco do motorista com ajuste de altura", "Computador de bordo",
+              "Desembaçador traseiro", "Direção elétrica", "Distribuição eletrônica de frenagem", "Freio ABS",
+              "Sensor de estacionamento", "Travas elétricas", "Volante com regulagem de altura",
             ];
 
             // =============================
@@ -346,7 +337,7 @@
             // =============================
             function LoadingScreen() {
                 return (
-                    <div className="flex items-center justify-center h-screen w-full text-white text-xl">
+                    <div className="flex items-center justify-center h-screen w-full text-white text-xl bg-black">
                         Carregando WSA Veículos...
                     </div>
                 );
@@ -354,61 +345,17 @@
 
             function Icon({ name, className = "w-5 h-5" }) {
               const icons = {
-                menu: (
-                  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-                    <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/>
-                  </svg>
-                ),
-                heart: (
-                  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-                    <path d="M12 21s-6.716-4.53-9.33-7.144A5.25 5.25 0 1 1 12 6.337a5.25 5.25 0 1 1 9.33 7.52C18.716 16.47 12 21 12 21z"/>
-                  </svg>
-                ),
-                star: (
-                  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-                    <path d="M12 .587l3.668 7.431 8.2 1.19-5.934 5.787 1.402 8.167L12 18.897 4.664 23.162l1.402-8.167L.132 9.208l8.2-1.19z"/>
-                  </svg>
-                ),
-                lightning: (
-                  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-                    <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/>
-                  </svg>
-                ),
-                map: (
-                  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-                    <path d="M9.5 3l5 2 5-2v18l-5 2-5-2-5 2V5l5-2zm0 2.236L6 6.118v13.646l3.5-1.4V5.236zm2 0v13.128l3 1.2V6.436l-3-1.2zM19 4.382l-2.5.999v13.647L19 18.03V4.382z"/>
-                  </svg>
-                ),
-                phone: (
-                  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-                    <path d="M6.62 10.79a15.054 15.054 0 006.59 6.59l2.2-2.2a1 1 0 011.05-.24c1.15.38 2.39.58 3.64.58a1 1 0 011 1v3.5a1 1 0 01-1 1C10.07 22 2 13.93 2 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.49.58 3.64a1 1 0 01-.24 1.05l-2.22 2.1z"/>
-                  </svg>
-                ),
-                filter: (
-                  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-                    <path d="M3 5h18v2H3V5zm4 6h10v2H7v-2zm-2 6h14v2H5v-2z"/>
-                  </svg>
-                ),
-                x: (
-                  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-                    <path d="M18.3 5.71a1 1 0 00-1.41 0L12 10.59 7.11 5.7A1 1 0 105.7 7.11L10.59 12l-4.9 4.89a1 1 0 101.41 1.41L12 13.41l4.89 4.9a1 1 0 001.41-1.41L13.41 12l4.9-4.89a1 1 0 000-1.4z"/>
-                  </svg>
-                ),
-                chevronRight: (
-                  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-                    <path d="M9 6l6 6-6 6"/>
-                  </svg>
-                ),
-                chevronLeft: (
-                  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-                    <path d="M15 6l-6 6 6 6"/>
-                  </svg>
-                ),
-                search: (
-                  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-                    <path d="M10 2a8 8 0 015.292 13.708l4 4a1 1 0 01-1.414 1.414l-4-4A8 8 0 1110 2zm0 2a6 6 0 100 12A6 6 0 0010 4z"/>
-                  </svg>
-                ),
+                menu: ( <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true"> <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/> </svg> ),
+                heart: ( <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true"> <path d="M12 21s-6.716-4.53-9.33-7.144A5.25 5.25 0 1 1 12 6.337a5.25 5.25 0 1 1 9.33 7.52C18.716 16.47 12 21 12 21z"/> </svg> ),
+                star: ( <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true"> <path d="M12 .587l3.668 7.431 8.2 1.19-5.934 5.787 1.402 8.167L12 18.897 4.664 23.162l1.402-8.167L.132 9.208l8.2-1.19z"/> </svg> ),
+                lightning: ( <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true"> <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/> </svg> ),
+                map: ( <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true"> <path d="M9.5 3l5 2 5-2v18l-5 2-5-2-5 2V5l5-2zm0 2.236L6 6.118v13.646l3.5-1.4V5.236zm2 0v13.128l3 1.2V6.436l-3-1.2zM19 4.382l-2.5.999v13.647L19 18.03V4.382z"/> </svg> ),
+                phone: ( <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true"> <path d="M6.62 10.79a15.054 15.054 0 006.59 6.59l2.2-2.2a1 1 0 011.05-.24c1.15.38 2.39.58 3.64.58a1 1 0 011 1v3.5a1 1 0 01-1 1C10.07 22 2 13.93 2 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.49.58 3.64a1 1 0 01-.24 1.05l-2.22 2.1z"/> </svg> ),
+                filter: ( <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true"> <path d="M3 5h18v2H3V5zm4 6h10v2H7v-2zm-2 6h14v2H5v-2z"/> </svg> ),
+                x: ( <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true"> <path d="M18.3 5.71a1 1 0 00-1.41 0L12 10.59 7.11 5.7A1 1 0 105.7 7.11L10.59 12l-4.9 4.89a1 1 0 101.41 1.41L12 13.41l4.89 4.9a1 1 0 001.41-1.41L13.41 12l4.9-4.89a1 1 0 000-1.4z"/> </svg> ),
+                chevronRight: ( <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true"> <path d="M9 6l6 6-6 6"/> </svg> ),
+                chevronLeft: ( <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true"> <path d="M15 6l-6 6 6 6"/> </svg> ),
+                search: ( <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true"> <path d="M10 2a8 8 0 015.292 13.708l4 4a1 1 0 01-1.414 1.414l-4-4A8 8 0 1110 2zm0 2a6 6 0 100 12A6 6 0 0010 4z"/> </svg> ),
               };
               return icons[name] ?? null;
             }
@@ -578,17 +525,8 @@
             function useCatalog(initialVehicles) { 
               const [query, setQuery] = useState("");
               const [filters, setFilters] = useState({
-                brand: "",
-                model: "",
-                state: "",
-                body: "",
-                fuel: "",
-                transmission: "",
-                priceMin: 0,
-                priceMax: 200000,
-                yearMin: 2019,
-                yearMax: 2025,
-                kmMax: 100000,
+                brand: "", model: "", state: "", body: "", fuel: "", transmission: "",
+                priceMin: 0, priceMax: 200000, yearMin: 2019, yearMax: 2025, kmMax: 100000,
               });
               const [sort, setSort] = useState("relevance");
               const [page, setPage] = useState(1);
@@ -629,22 +567,12 @@
                 });
 
                 switch (sort) {
-                  case "price-asc":
-                    list = list.sort((a, b) => a.price - b.price);
-                    break;
-                  case "price-desc":
-                    list = list.sort((a, b) => b.price - b.price);
-                    break;
-                  case "km-asc":
-                    list = list.sort((a, b) => a.km - b.km);
-                    break;
-                  case "year-desc":
-                    list = list.sort((a, b) => b.yearModel - a.yearModel);
-                    break;
-                  default:
-                    list = list.sort((a, b) => (b.tags?.includes("Mais pesquisado") ? 1 : 0) - (a.tags?.includes("Mais pesquisado") ? 1 : 0));
+                  case "price-asc": list = list.sort((a, b) => a.price - b.price); break;
+                  case "price-desc": list = list.sort((a, b) => b.price - a.price); break;
+                  case "km-asc": list = list.sort((a, b) => a.km - b.km); break;
+                  case "year-desc": list = list.sort((a, b) => b.yearModel - a.yearModel); break;
+                  default: list = list.sort((a, b) => (b.tags?.includes("Mais pesquisado") ? 1 : 0) - (a.tags?.includes("Mais pesquisado") ? 1 : 0));
                 }
-
                 return list;
               }, [initialVehicles, query, filters, sort]);
 
@@ -654,14 +582,8 @@
               useEffect(() => { setPage(1); }, [query, JSON.stringify(filters)]);
 
               return {
-                query, setQuery,
-                filters, setFilters,
-                sort, setSort,
-                page, setPage,
-                pageSize, totalPages,
-                list: paginated,
-                fullList: filtered,
-                uniqueOptions
+                query, setQuery, filters, setFilters, sort, setSort, page, setPage,
+                pageSize, totalPages, list: paginated, fullList: filtered, uniqueOptions
               };
             }
 
@@ -769,7 +691,6 @@
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="text-sm text-gray-400">{total} veículos</div>
                   <div className="flex items-center gap-2">
-                    {/* <!-- Botão de Filtro para Mobile --> */}
                     <Button className="lg:hidden bg-gray-800 text-white hover:bg-gray-700 ring-gray-700" onClick={onShowFilters}>
                       <Icon name="filter" className="w-4 h-4 mr-1"/>
                       Filtrar
@@ -840,12 +761,8 @@
             
             function Catalog({ vehicles }) {
               const {
-                query, setQuery,
-                filters, setFilters,
-                sort, setSort,
-                page, setPage,
-                list, fullList, totalPages,
-                uniqueOptions
+                query, setQuery, filters, setFilters, sort, setSort, page, setPage,
+                list, fullList, totalPages, uniqueOptions
               } = useCatalog(vehicles);
 
               const [showFilters, setShowFilters] = useState(false);
@@ -858,7 +775,6 @@
                 <main className="mx-auto max-w-7xl px-3 py-8">
                   <div className="grid lg:grid-cols-[280px_1fr] gap-6">
                     
-                    {/* <!-- Filtros Mobile (Off-canvas) --> */}
                     {showFilters && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setShowFilters(false)}></div>}
                     <div 
                       className={`
@@ -885,10 +801,7 @@
                     <section className="grid gap-4">
                       <Toolbar 
                         total={fullList.length} 
-                        sort={sort} 
-                        setSort={setSort} 
-                        query={query} 
-                        setQuery={setQuery}
+                        sort={sort} setSort={setSort} query={query} setQuery={setQuery}
                         onShowFilters={() => setShowFilters(true)}
                       />
                       {fullList.length === 0 ? (
@@ -910,7 +823,7 @@
             function FinanceSimulator({ price }) {
               const [entry, setEntry] = useState(Math.round(price * 0.2));
               const [months, setMonths] = useState(48);
-              const [rate, setRate] = useState(1.79); // % ao mês (exemplo)
+              const [rate, setRate] = useState(1.79);
 
               const financed = Math.max(0, price - entry);
               const i = rate / 100;
@@ -937,14 +850,10 @@
 
             function Specs({ v }) {
               const items = [
-                { label: "Quilometragem", value: km(v.km) },
-                { label: "Ano", value: `${v.yearFab}/${v.yearModel}` },
-                { label: "Combustível", value: v.fuel },
-                { label: "Câmbio", value: v.transmission },
-                { label: "Motor", value: v.engine },
-                { label: "Final de placa", value: v.plateFinal },
-                { label: "Portas", value: String(v.doors) },
-                { label: "Cor", value: v.color },
+                { label: "Quilometragem", value: km(v.km) }, { label: "Ano", value: `${v.yearFab}/${v.yearModel}` },
+                { label: "Combustível", value: v.fuel }, { label: "Câmbio", value: v.transmission },
+                { label: "Motor", value: v.engine }, { label: "Final de placa", value: v.plateFinal },
+                { label: "Portas", value: String(v.doors) }, { label: "Cor", value: v.color },
                 { label: "Carroceria", value: v.body },
               ];
               return (
@@ -980,7 +889,7 @@
                   <div className="grid sm:grid-cols-2 gap-2 text-sm">
                     <div>
                       <div className="text-xs text-gray-500 mb-1">Horários de funcionamento</div>
-                      <ul className="space-y-1">
+                      <ul className="space-y-1 text-gray-300">
                         {v.store?.hours?.map((h)=> (
                           <li key={h.d} className="flex justify-between"><span>{h.d}</span><span>{h.h}</span></li>
                         ))}
@@ -1128,7 +1037,6 @@
               const [error, setError] = useState("");
               const [loading, setLoading] = useState(false);
 
-              // Função auxiliar para garantir o perfil no Firestore
               const ensureUserProfile = async (userAuth) => {
                   if (!userAuth || !db) return;
                   const userRef = db.collection('users').doc(userAuth.uid);
@@ -1147,7 +1055,6 @@
                       }
                   } catch (firestoreError) {
                       console.error("Erro ao garantir perfil no Firestore:", firestoreError);
-                      // Não define erro aqui para não sobrescrever o erro do Auth se houver
                   }
               };
 
@@ -1159,7 +1066,6 @@
                 try {
                   userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
                   await ensureUserProfile(userCredential.user); 
-                  // Sucesso! O onAuthStateChanged cuidará do redirecionamento
                 } catch (err) {
                     let errorMessage = "Falha no cadastro. Verifique os dados ou tente novamente.";
                     if (err.code === 'auth/email-already-in-use') {
@@ -1291,8 +1197,10 @@
                 window.scrollTo(0, 0); 
               }, [v]);
 
+              // Se o usuário for 'visitor' (anônimo), mostra o prompt de login
               if (user && user.profile && user.profile.role === 'visitor') {
-                 return <LoginPrompt slug={slug} v={v} />;
+                 const vehicleData = vehicles.find((x) => x.slug === slug);
+                 return <LoginPrompt slug={slug} v={vehicleData} />;
               }
 
               if (!v) return <main className="mx-auto max-w-7xl px-3 py-12 text-white">Veículo não encontrado ou carregando...</main>;
@@ -1305,12 +1213,7 @@
 
               return (
                 <main className="mx-auto max-w-7xl px-3 py-8">
-                  <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
-                    "@context": "https://schema.org", "@type": "Product", name: `${v.brand} ${v.model} ${v.version}`, brand: v.brand, model: v.model,
-                    color: v.color, vehicleTransmission: v.transmission, vehicleEngine: v.engine, vehicleSeatingCapacity: v.doors, bodyType: v.body,
-                    mileageFromOdometer: { "@type": "QuantitativeValue", value: v.km, unitCode: "KM" },
-                    offers: { "@type": "Offer", priceCurrency: "BRL", price: v.price, availability: "https://schema.org/InStock" },
-                  }) }} />
+                  {/* ... (JSON-LD script) ... */}
 
                   <nav className="text-sm text-gray-400 mb-4">
                     {breadcrumb.map((b, i) => (
@@ -1386,7 +1289,7 @@
               return (
                 <main className="mx-auto max-w-4xl px-3 py-10">
                   <h1 className="text-2xl font-extrabold mb-4 text-white">{title}</h1>
-                  <div className="prose prose-invert max-w-none">
+                  <div className="prose prose-invert max-w-none text-gray-300">
                     {children}
                   </div>
                 </main>
@@ -1401,7 +1304,7 @@
               useEffect(() => {
                 const onChange = () => {
                     setHash(window.location.hash || "#/");
-                    window.scrollTo(0, 0); // Rola para o topo a cada mudança de rota
+                    window.scrollTo(0, 0); 
                 }
                 window.addEventListener("hashchange", onChange);
                 return () => window.removeEventListener("hashchange", onChange);
@@ -1472,7 +1375,7 @@
                 }
               }, []);
 
-              // 2. Gerencia o estado de Autenticação (usuário logado)
+              // 2. Gerencia o estado de Autenticação (usuário logado) - LÓGICA REVISADA
               useEffect(() => {
                 if (!authInstance || !db) {
                     setIsLoadingAuth(false);
@@ -1491,49 +1394,60 @@
                             setUser({ auth: userAuth, profile: { role: 'visitor' } });
                             setIsLoadingAuth(false);
                         } else {
+                           // Usuário logado (não anônimo)
                            const userRef = db.collection('users').doc(userAuth.uid);
-                           try {
-                               userProfileUnsubscribe = userRef.onSnapshot((doc) => {
-                                   let profileData = null;
-                                   if (doc.exists) {
-                                       console.log("Perfil encontrado/atualizado:", doc.data());
-                                       profileData = doc.data();
-                                       setUser({ auth: userAuth, profile: profileData });
-                                   } else {
-                                       console.log("Perfil não encontrado, tentando criar...");
-                                       profileData = {
-                                           email: userAuth.email,
-                                           role: 'client', 
-                                           createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                                       };
-                                       userRef.set(profileData).then(() => {
-                                           console.log("Perfil criado após não encontrar no snapshot.");
-                                       }).catch(err => {
-                                            console.error("Erro ao tentar criar perfil no snapshot:", err);
-                                       });
-                                       setUser({ auth: userAuth, profile: profileData }); // Seta o perfil localmente
-                                   }
-                                   
-                                   setIsLoadingAuth(false); 
-                                   
-                                   // Redireciona para Home APÓS login/cadastro bem sucedido
-                                   if(window.location.hash.includes('/login') || window.location.hash.includes('/register') || window.location.hash.includes('/forgot-password')) {
-                                       window.location.hash = "#/"; 
-                                   }
+                           let profileData = { role: 'client', email: userAuth.email }; // Perfil padrão
+                           let docExists = false;
 
-                               }, (error) => { 
-                                    console.error("Erro no listener do perfil do usuário:", error);
-                                    setUser({ auth: userAuth, profile: { role: 'client', email: userAuth.email } });
-                                    setIsLoadingAuth(false);
+                           try {
+                               // 1. Tenta LER o perfil
+                               const doc = await userRef.get();
+                               if (doc.exists) {
+                                   console.log("Perfil encontrado:", doc.data());
+                                   profileData = doc.data();
+                                   docExists = true;
+                               } else {
+                                   console.log("Perfil não encontrado, tentando criar...");
+                                   // 2. Tenta CRIAR o perfil se não existir
+                                   profileData = {
+                                       email: userAuth.email,
+                                       role: 'client', 
+                                       createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                                   };
+                                   await userRef.set(profileData);
+                                   console.log("Perfil criado com sucesso.");
+                                   docExists = true;
+                               }
+                           } catch (error) {
+                               // **Este é o ponto de falha provável (REGRAS)**
+                               console.error("Erro ao LER ou CRIAR o perfil no Firestore:", error.message);
+                               console.warn("Assumindo perfil 'client' localmente. O login vai funcionar, mas o seed pode falhar se não for admin.");
+                               // Define um perfil local para destravar o login, mesmo se o Firestore falhar
+                               profileData = { role: 'client', email: userAuth.email, firestoreError: true };
+                           }
+                           
+                           // 3. Define o usuário e destrava o app
+                           setUser({ auth: userAuth, profile: profileData });
+                           setIsLoadingAuth(false); 
+
+                           // 4. Redireciona se estiver nas páginas de auth
+                           if(window.location.hash.includes('/login') || window.location.hash.includes('/register') || window.location.hash.includes('/forgot-password')) {
+                               console.log("Redirecionando para Home...");
+                               window.location.hash = "#/"; 
+                           }
+
+                           // 5. (Opcional) Se o perfil foi lido, adiciona um listener para atualizações (promoção admin)
+                           if (docExists) {
+                               userProfileUnsubscribe = userRef.onSnapshot((doc) => {
+                                   if (doc.exists) {
+                                       console.log("Perfil atualizado (listener):", doc.data());
+                                       setUser(currentUser => ({ ...currentUser, profile: doc.data() }));
+                                   }
                                });
-                               
-                           } catch (error) { 
-                               console.error("Erro ao buscar/criar perfil do usuário (catch geral):", error);
-                               setUser({ auth: userAuth, profile: { role: 'client', email: userAuth.email } });
-                               setIsLoadingAuth(false);
                            }
                         }
                     } else {
+                        // Usuário deslogado. Tenta logar anonimamente.
                         console.log("Usuário não logado, tentando login anônimo...");
                         authInstance.signInAnonymously().catch(err => {
                             console.error("Erro no login anônimo:", err);
@@ -1560,7 +1474,7 @@
                   const unsubscribe = vehiclesCol.onSnapshot((snapshot) => { 
                       const vehiclesData = snapshot.docs.map(doc => ({
                           ...doc.data(),
-                          id: doc.id 
+                          // id: doc.id // Usamos o ID de dentro do documento
                       }));
                       console.log(`Dados recebidos: ${vehiclesData.length} veículos.`);
                       setVehicles(vehiclesData);
@@ -1575,12 +1489,11 @@
 
               // 4. Função de UPLOAD (Seed)
               useEffect(() => {
-                if (!db) return;
+                if (!db || !authInstance) return; // Precisa do authInstance
 
                 window.seedDatabase = async () => {
                     console.log("Iniciando o Seed do banco de dados...");
                     
-                    // Verifica o usuário atual
                     const currentUser = authInstance.currentUser;
                     if (!currentUser || currentUser.isAnonymous) {
                          alert("Acesso negado. Você precisa estar logado com uma conta de administrador.");
@@ -1590,29 +1503,44 @@
                     
                     // Verifica o 'role' do usuário no Firestore
                     const userRef = db.collection('users').doc(currentUser.uid);
-                    const userDoc = await userRef.get();
-                    
-                    if (!userDoc.exists || userDoc.data().role !== 'admin') {
-                        alert("Acesso negado. Você não tem permissão de administrador para executar esta ação.");
-                        console.warn("Seed negado: usuário não é admin.");
-                        return;
+                    let userDoc;
+                    try {
+                        userDoc = await userRef.get();
+                        if (!userDoc.exists || userDoc.data().role !== 'admin') {
+                            alert("Acesso negado. Você não tem permissão de administrador para executar esta ação. (Verifique o Firestore)");
+                            console.warn("Seed negado: usuário não é admin no Firestore.", userDoc.data());
+                            return;
+                        }
+                    } catch (e) {
+                         alert("Erro ao verificar permissão de admin. Verifique as Regras do Firestore e o console.");
+                         console.error("Erro ao ler documento do usuário para permissão:", e);
+                         return;
                     }
                     
-                    // Usuário é admin, prossegue com o seed
                     console.log("Usuário verificado como admin. Prosseguindo com o seed...");
                     const collectionPath = `/artifacts/${appId}/public/data/vehicles`;
+                    const vehiclesCol = db.collection(collectionPath);
                     
-                    const existingData = await db.collection(collectionPath).get(); 
-                    if (existingData.size > 0) {
-                        if (!confirm(`A coleção ${collectionPath} já contém ${existingData.size} documentos. Deseja apagar e recadastrar?`)) {
+                    let existingDataSize = 0;
+                    try {
+                        const existingData = await vehiclesCol.get();
+                        existingDataSize = existingData.size;
+                    } catch (e) {
+                         console.error("Erro ao ler coleção de veículos (verifique regras):", e);
+                         alert("Erro ao ler coleção de veículos. Verifique as regras do Firestore.");
+                         return;
+                    }
+                    
+                    if (existingDataSize > 0) {
+                        if (!confirm(`A coleção ${collectionPath} já contém ${existingDataSize} documentos. Deseja apagar e recadastrar?`)) {
                            console.log("Seed cancelado pelo usuário.");
                            return;
                         }
                         
-                        // Deleta dados antigos
                         console.log("Deletando dados antigos...");
                         const deleteBatch = db.batch();
-                        existingData.docs.forEach(doc => deleteBatch.delete(doc.ref));
+                        const oldDocs = await vehiclesCol.get(); // Busca de novo para garantir
+                        oldDocs.docs.forEach(doc => deleteBatch.delete(doc.ref));
                         await deleteBatch.commit();
                         console.log("Dados antigos deletados.");
                     }
@@ -1621,7 +1549,8 @@
                     const batch = db.batch(); 
                     
                     MOCK_VEHICLES_FOR_SEEDING.forEach(vehicle => {
-                        const docRef = db.doc(`${collectionPath}/${vehicle.id.toString()}`); 
+                        // Usamos o ID numérico como ID do documento (convertido para string)
+                        const docRef = db.collection(collectionPath).doc(vehicle.id.toString()); 
                         batch.set(docRef, vehicle); 
                     });
 
