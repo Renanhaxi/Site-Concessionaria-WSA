@@ -15,7 +15,7 @@
     <!-- 3. Carrega o Babel (para compilar o JSX no navegador) -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- 4. Carrega os SDKs do Firebase (Versão 8, compatível com a sintaxe 'firebase.app') -->
+    <!-- 4. Carrega os SDKs do Firebase (Versão 8) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
@@ -35,11 +35,8 @@
     <script type="text/babel">
         // Envolvemos todo o código em uma função main()
         function main() {
-            // Removemos o "import React..." pois ele já foi carregado via CDN
             const { useEffect, useMemo, useState } = React;
             
-            // As funções serão chamadas diretamente (ex: firebase.initializeApp, firebase.auth(), firebase.firestore())
-
             // =============================
             // UTILITÁRIOS
             // =============================
@@ -636,7 +633,7 @@
                     list = list.sort((a, b) => a.price - b.price);
                     break;
                   case "price-desc":
-                    list = list.sort((a, b) => b.price - a.price);
+                    list = list.sort((a, b) => b.price - b.price);
                     break;
                   case "km-asc":
                     list = list.sort((a, b) => a.km - b.km);
@@ -1034,7 +1031,6 @@
               );
             }
 
-            // *** NOVO COMPONENTE: AVISO DE LOGIN (FUNIL) ***
             function LoginPrompt({ slug, v }) {
                useEffect(() => {
                 document.title = v ? `Login para ver ${v.brand} ${v.model} — WSA Seminovos` : "Login — WSA Seminovos";
@@ -1064,8 +1060,7 @@
                 </main>
               );
             }
-
-            // *** NOVOS COMPONENTES: PÁGINAS DE LOGIN E CADASTRO ***
+            
             function LoginPage({ db }) {
               const [email, setEmail] = useState("");
               const [password, setPassword] = useState("");
@@ -1078,16 +1073,15 @@
                 setLoading(true);
                 try {
                   await firebase.auth().signInWithEmailAndPassword(email, password);
-                  // O onAuthStateChanged no App raiz vai cuidar do resto
-                  window.location.hash = "#/"; // Volta para a Home
+                  // Sucesso! O onAuthStateChanged vai redirecionar
                 } catch (err) {
                   setError("Falha no login. Verifique seu e-mail e senha.");
                   console.error("Erro de login:", err);
+                  setLoading(false); 
                 }
-                setLoading(false);
               };
               
-              useEffect(() => { document.title = `Login — WSA Seminovos`; }, []);
+              useEffect(() => { document.title = `Login — WSA Seminovos`; window.scrollTo(0, 0); }, []);
 
               return (
                 <main className="mx-auto max-w-sm px-3 py-10">
@@ -1095,7 +1089,7 @@
                         <h1 className="text-2xl font-extrabold mb-6 text-white text-center">Login</h1>
                         {error && <p className="text-red-400 bg-red-950 p-3 rounded-lg mb-4 text-sm">{error}</p>}
                         <form onSubmit={handleLogin} className="grid gap-4">
-                            <Field label="E-mail">
+                             <Field label="E-mail">
                                 <input 
                                     type="email" 
                                     value={email} 
@@ -1120,7 +1114,6 @@
                         <p className="text-sm text-gray-400 mt-6 text-center">
                             Não tem uma conta? <a href="#/register" className="text-red-500 hover:underline">Cadastre-se</a>
                         </p>
-                        {/* <!-- NOVO LINK DE RECUPERAÇÃO --> */}
                         <p className="text-sm text-gray-400 mt-4 text-center">
                             <a href="#/forgot-password" className="text-red-500 hover:underline">Esqueceu a senha?</a>
                         </p>
@@ -1135,39 +1128,65 @@
               const [error, setError] = useState("");
               const [loading, setLoading] = useState(false);
 
+              // Função auxiliar para garantir o perfil no Firestore
+              const ensureUserProfile = async (userAuth) => {
+                  if (!userAuth || !db) return;
+                  const userRef = db.collection('users').doc(userAuth.uid);
+                  try {
+                      const doc = await userRef.get();
+                      if (!doc.exists) {
+                          console.log(`Perfil não encontrado para ${userAuth.uid}, criando...`);
+                          await userRef.set({
+                              email: userAuth.email,
+                              role: 'client', 
+                              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                          });
+                          console.log(`Perfil criado para ${userAuth.uid}`);
+                      } else {
+                          console.log(`Perfil já existe para ${userAuth.uid}`);
+                      }
+                  } catch (firestoreError) {
+                      console.error("Erro ao garantir perfil no Firestore:", firestoreError);
+                      // Não define erro aqui para não sobrescrever o erro do Auth se houver
+                  }
+              };
+
               const handleRegister = async (e) => {
                 e.preventDefault();
                 setError("");
                 setLoading(true);
+                let userCredential = null;
                 try {
-                  const { user } = await firebase.auth().createUserWithEmailAndPassword(email, password);
-                  
-                  // ** IMPORTANTE: Cria o "papel" (role) do usuário no Firestore **
-                  // Usamos uma coleção "users" separada, fora de /artifacts/
-                  const userRef = db.collection('users').doc(user.uid);
-                  await userRef.set({
-                    email: user.email,
-                    role: 'client', // Todo novo usuário é 'client'
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                  });
-
-                  // O onAuthStateChanged no App raiz vai cuidar do resto
-                  window.location.hash = "#/"; // Volta para a Home
+                  userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+                  await ensureUserProfile(userCredential.user); 
+                  // Sucesso! O onAuthStateChanged cuidará do redirecionamento
                 } catch (err) {
-                  if (err.code === 'auth/email-already-in-use') {
-                    setError("Este e-mail já está em uso. Tente fazer login.");
-                  } else {
-                    setError("Falha no cadastro. Tente novamente.");
-                  }
-                  console.error("Erro de cadastro:", err);
+                    let errorMessage = "Falha no cadastro. Verifique os dados ou tente novamente.";
+                    if (err.code === 'auth/email-already-in-use') {
+                        errorMessage = "Este e-mail já está em uso. Tentando garantir perfil...";
+                        console.warn("Email já em uso, tentando login para garantir perfil.");
+                        try {
+                            const signInCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+                            await ensureUserProfile(signInCredential.user);
+                            errorMessage = "Este e-mail já está em uso. Fizemos login para você.";
+                        } catch (signInErr) {
+                            console.error("Erro ao tentar logar após falha de cadastro (email em uso):", signInErr);
+                            errorMessage = "Este e-mail já está em uso. Tente fazer login manualmente.";
+                        }
+                    } else if (err.code === 'auth/weak-password') {
+                        errorMessage = "Senha muito fraca. Use pelo menos 6 caracteres.";
+                    } else {
+                        console.error("Erro de cadastro:", err);
+                    }
+                    setError(errorMessage);
+                    setLoading(false); 
                 }
-                setLoading(false);
               };
               
-              useEffect(() => { document.title = `Cadastro — WSA Seminovos`; }, []);
+              useEffect(() => { document.title = `Cadastro — WSA Seminovos`; window.scrollTo(0, 0); }, []);
 
               return (
-                <main className="mx-auto max-w-sm px-3 py-10">
+                 <main className="mx-auto max-w-sm px-3 py-10">
                     <div className="rounded-2xl ring-1 ring-gray-800 bg-gray-900 p-8">
                         <h1 className="text-2xl font-extrabold mb-6 text-white text-center">Criar Conta</h1>
                         {error && <p className="text-red-400 bg-red-950 p-3 rounded-lg mb-4 text-sm">{error}</p>}
@@ -1188,6 +1207,7 @@
                                     onChange={(e) => setPassword(e.target.value)} 
                                     className="rounded-lg border-gray-700 bg-gray-800 text-white w-full focus:ring-red-500 focus:border-red-500" 
                                     required 
+                                    minLength="6"
                                 />
                             </Field>
                             <Button type="submit" className="bg-red-600 text-white hover:bg-red-700 w-full" disabled={loading}>
@@ -1202,113 +1222,94 @@
               );
             }
 
-            // *** NOVO COMPONENTE: PÁGINA DE RECUPERAÇÃO DE SENHA ***
             function ForgotPasswordPage() {
-              const [email, setEmail] = useState("");
-              const [error, setError] = useState("");
-              const [success, setSuccess] = useState("");
-              const [loading, setLoading] = useState(false);
+                const [email, setEmail] = useState("");
+                const [error, setError] = useState("");
+                const [success, setSuccess] = useState("");
+                const [loading, setLoading] = useState(false);
 
-              const handlePasswordReset = async (e) => {
-                e.preventDefault();
-                setError("");
-                setSuccess("");
-                setLoading(true);
-                try {
-                  await firebase.auth().sendPasswordResetEmail(email);
-                  setSuccess("Verifique seu e-mail! Enviamos um link para você redefinir sua senha.");
-                } catch (err) {
-                  console.error("Erro ao redefinir senha:", err);
-                  if (err.code === 'auth/user-not-found') {
-                    setError("Não encontramos uma conta com este e-mail.");
-                  } else {
-                    setError("Ocorreu um erro. Tente novamente.");
-                  }
-                }
-                setLoading(false);
-              };
-              
-              useEffect(() => { document.title = `Recuperar Senha — WSA Seminovos`; }, []);
+                const handlePasswordReset = async (e) => {
+                    e.preventDefault();
+                    setError("");
+                    setSuccess("");
+                    setLoading(true);
+                    try {
+                        await firebase.auth().sendPasswordResetEmail(email);
+                        setSuccess("Verifique seu e-mail! Enviamos um link para você redefinir sua senha.");
+                    } catch (err) {
+                        console.error("Erro ao redefinir senha:", err);
+                        if (err.code === 'auth/user-not-found') {
+                            setError("Não encontramos uma conta com este e-mail.");
+                        } else {
+                            setError("Ocorreu um erro. Tente novamente.");
+                        }
+                    }
+                    setLoading(false);
+                };
+                
+                useEffect(() => { document.title = `Recuperar Senha — WSA Seminovos`; window.scrollTo(0, 0); }, []);
 
-              return (
-                <main className="mx-auto max-w-sm px-3 py-10">
-                    <div className="rounded-2xl ring-1 ring-gray-800 bg-gray-900 p-8">
-                        <h1 className="text-2xl font-extrabold mb-4 text-white text-center">Recuperar Senha</h1>
-                        <p className="text-sm text-gray-400 mb-6 text-center">Digite seu e-mail e enviaremos um link para redefinição.</p>
+                return (
+                    <main className="mx-auto max-w-sm px-3 py-10">
+                        <div className="rounded-2xl ring-1 ring-gray-800 bg-gray-900 p-8">
+                            <h1 className="text-2xl font-extrabold mb-4 text-white text-center">Recuperar Senha</h1>
+                            <p className="text-sm text-gray-400 mb-6 text-center">Digite seu e-mail e enviaremos um link para redefinição.</p>
 
-                        {error && <p className="text-red-400 bg-red-950 p-3 rounded-lg mb-4 text-sm">{error}</p>}
-                        {success && <p className="text-green-400 bg-green-950 p-3 rounded-lg mb-4 text-sm">{success}</p>}
-                        
-                        {!success && ( // Só mostra o formulário se ainda não teve sucesso
-                          <form onSubmit={handlePasswordReset} className="grid gap-4">
-                              <Field label="E-mail">
-                                  <input 
-                                      type="email" 
-                                      value={email} 
-                                      onChange={(e) => setEmail(e.target.value)} 
-                                      className="rounded-lg border-gray-700 bg-gray-800 text-white w-full focus:ring-red-500 focus:border-red-500" 
-                                      required 
-                                  />
-                              </Field>
-                              <Button type="submit" className="bg-red-600 text-white hover:bg-red-700 w-full" disabled={loading}>
-                                  {loading ? "Enviando..." : "Enviar Link de Recuperação"}
-                              </Button>
-                          </form>
-                        )}
-                        
-                        <p className="text-sm text-gray-400 mt-6 text-center">
-                            Lembrou a senha? <a href="#/login" className="text-red-500 hover:underline">Fazer login</a>
-                        </p>
-                    </div>
-                </main>
+                            {error && <p className="text-red-400 bg-red-950 p-3 rounded-lg mb-4 text-sm">{error}</p>}
+                            {success && <p className="text-green-400 bg-green-950 p-3 rounded-lg mb-4 text-sm">{success}</p>}
+                            
+                            {!success && (
+                            <form onSubmit={handlePasswordReset} className="grid gap-4">
+                                <Field label="E-mail">
+                                    <input 
+                                        type="email" 
+                                        value={email} 
+                                        onChange={(e) => setEmail(e.target.value)} 
+                                        className="rounded-lg border-gray-700 bg-gray-800 text-white w-full focus:ring-red-500 focus:border-red-500" 
+                                        required 
+                                    />
+                                </Field>
+                                <Button type="submit" className="bg-red-600 text-white hover:bg-red-700 w-full" disabled={loading}>
+                                    {loading ? "Enviando..." : "Enviar Link de Recuperação"}
+                                </Button>
+                            </form>
+                            )}
+                            
+                            <p className="text-sm text-gray-400 mt-6 text-center">
+                                Lembrou a senha? <a href="#/login" className="text-red-500 hover:underline">Fazer login</a>
+                            </p>
+                        </div>
+                    </main>
               );
             }
 
-
-            function Detail({ slug, vehicles, user }) { // Recebe o usuário
+            function Detail({ slug, vehicles, user }) {
               const v = vehicles.find((x) => x.slug === slug);
               
               useEffect(() => {
                 document.title = v ? `${v.brand} ${v.model} ${v.version} ${v.yearModel} — WSA Seminovos` : "Veículo — WSA Seminovos";
-                window.scrollTo(0, 0); // Rola para o topo ao trocar de página
+                window.scrollTo(0, 0); 
               }, [v]);
 
-              // ** LÓGICA DO FUNIL **
-              // Se o usuário for um 'visitor' (anônimo), mostre o aviso de login
               if (user && user.profile && user.profile.role === 'visitor') {
                  return <LoginPrompt slug={slug} v={v} />;
               }
 
               if (!v) return <main className="mx-auto max-w-7xl px-3 py-12 text-white">Veículo não encontrado ou carregando...</main>;
 
-              // Se passou da verificação, o usuário está logado (cliente ou admin)
               const breadcrumb = [
                 { name: "Home", href: "#/" },
                 { name: "Estoque", href: "#/estoque" },
-                { name: `${v.brand} ${v.model}`, href: `#` }, // Link não clicável
+                { name: `${v.brand} ${v.model}`, href: `#` },
               ];
 
               return (
                 <main className="mx-auto max-w-7xl px-3 py-8">
-                  {/* SEO básico e JSON-LD */}
                   <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
-                    "@context": "https://schema.org",
-                    "@type": "Product",
-                    name: `${v.brand} ${v.model} ${v.version}`,
-                    brand: v.brand,
-                    model: v.model,
-                    color: v.color,
-                    vehicleTransmission: v.transmission,
-                    vehicleEngine: v.engine,
-                    vehicleSeatingCapacity: v.doors,
-                    bodyType: v.body,
+                    "@context": "https://schema.org", "@type": "Product", name: `${v.brand} ${v.model} ${v.version}`, brand: v.brand, model: v.model,
+                    color: v.color, vehicleTransmission: v.transmission, vehicleEngine: v.engine, vehicleSeatingCapacity: v.doors, bodyType: v.body,
                     mileageFromOdometer: { "@type": "QuantitativeValue", value: v.km, unitCode: "KM" },
-                    offers: {
-                      "@type": "Offer",
-                      priceCurrency: "BRL",
-                      price: v.price,
-                      availability: "https://schema.org/InStock",
-                    },
+                    offers: { "@type": "Offer", priceCurrency: "BRL", price: v.price, availability: "https://schema.org/InStock" },
                   }) }} />
 
                   <nav className="text-sm text-gray-400 mb-4">
@@ -1381,7 +1382,7 @@
             }
 
             function SimplePage({ title, children }) {
-              useEffect(() => { document.title = `${title} — WSA Seminovos`; }, [title]);
+              useEffect(() => { document.title = `${title} — WSA Seminovos`; window.scrollTo(0, 0); }, [title]);
               return (
                 <main className="mx-auto max-w-4xl px-3 py-10">
                   <h1 className="text-2xl font-extrabold mb-4 text-white">{title}</h1>
@@ -1398,24 +1399,23 @@
             function useHashRoute() {
               const [hash, setHash] = useState(window.location.hash || "#/");
               useEffect(() => {
-                const onChange = () => setHash(window.location.hash || "#/");
+                const onChange = () => {
+                    setHash(window.location.hash || "#/");
+                    window.scrollTo(0, 0); // Rola para o topo a cada mudança de rota
+                }
                 window.addEventListener("hashchange", onChange);
                 return () => window.removeEventListener("hashchange", onChange);
               }, []);
               return hash.replace(/^#/, "");
             }
 
-            function Router({ vehicles, user, db }) { // Recebe o usuário e o db
+            function Router({ vehicles, user, db }) {
               const route = useHashRoute();
               
-              // Novas rotas de autenticação
               if (route.startsWith("/login")) return <LoginPage db={db} />;
               if (route.startsWith("/register")) return <RegisterPage db={db} />;
               if (route.startsWith("/forgot-password")) return <ForgotPasswordPage />;
 
-              // Rotas protegidas (ex: /admin) podem vir aqui no futuro
-
-              // Rotas públicas
               if (route.startsWith("/carro/")) {
                 const slug = route.split("/carro/")[1];
                 return <Detail slug={slug} vehicles={vehicles} user={user} />;
@@ -1431,18 +1431,13 @@
             // APP RAIZ
             // =============================
             function DealershipCatalogApp() {
-              // Estado para o Firebase
               const [db, setDb] = useState(null);
-              const [auth, setAuth] = useState(null);
+              const [authInstance, setAuthInstance] = useState(null); 
               const [appId, setAppId] = useState('default-app-id');
-              
-              // Estado dos dados
               const [vehicles, setVehicles] = useState([]);
-              
-              // Estado de autenticação e carregamento
-              const [user, setUser] = useState(null); // Vai guardar { auth, profile }
+              const [user, setUser] = useState(null); 
               const [isLoadingData, setIsLoadingData] = useState(true);
-              const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+              const [isLoadingAuth, setIsLoadingAuth] = useState(true); 
 
               // 1. Inicializa o Firebase
               useEffect(() => {
@@ -1456,21 +1451,17 @@
                       appId: "1:860029979435:web:72fb9c7e622119e9f9936e",
                       measurementId: "G-N9KZGZ7PZB"
                     };
-                    
                     const appIdValue = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
                     
                     if (firebase.apps.length === 0) {
                         const app = firebase.initializeApp(firebaseConfig); 
-                        const appAuth = firebase.auth(app); 
-                        const firestoreDb = firebase.firestore(app); 
-                        
-                        firebase.firestore.setLogLevel('Debug'); 
-                        setDb(firestoreDb);
-                        setAuth(appAuth);
+                        setAuthInstance(firebase.auth(app)); 
+                        setDb(firebase.firestore(app)); 
+                        firebase.firestore.setLogLevel('debug'); 
                         setAppId(appIdValue);
                     } else {
                         const app = firebase.apps[0];
-                        setAuth(firebase.auth(app));
+                        setAuthInstance(firebase.auth(app));
                         setDb(firebase.firestore(app));
                         setAppId(appIdValue);
                     }
@@ -1483,49 +1474,70 @@
 
               // 2. Gerencia o estado de Autenticação (usuário logado)
               useEffect(() => {
-                if (!auth || !db) return; // Espera o auth e db estarem prontos
+                if (!authInstance || !db) {
+                    setIsLoadingAuth(false);
+                    return; 
+                }
 
-                let userProfileUnsubscribe = null; // Listener para o perfil do usuário
+                let userProfileUnsubscribe = null; 
 
-                const authUnsubscribe = auth.onAuthStateChanged((userAuth) => {
-                    // Limpa o listener de perfil anterior
-                    if (userProfileUnsubscribe) {
-                        userProfileUnsubscribe();
-                        userProfileUnsubscribe = null;
-                    }
+                const authUnsubscribe = authInstance.onAuthStateChanged(async (userAuth) => {
+                    setIsLoadingAuth(true); 
+                    if (userProfileUnsubscribe) userProfileUnsubscribe();
                     
                     if (userAuth) {
-                        // Usuário logado
+                        console.log("Auth state changed, user:", userAuth.uid, "Anonymous:", userAuth.isAnonymous);
                         if (userAuth.isAnonymous) {
-                            // É um visitante anônimo
                             setUser({ auth: userAuth, profile: { role: 'visitor' } });
                             setIsLoadingAuth(false);
                         } else {
-                            // É um usuário cadastrado (Cliente ou Admin)
-                            // Precisamos buscar o "papel" (role) dele no Firestore
-                            const userRef = db.collection('users').doc(userAuth.uid);
-                            userProfileUnsubscribe = userRef.onSnapshot((doc) => {
-                                if (doc.exists) {
-                                    // Encontrou o perfil
-                                    setUser({ auth: userAuth, profile: doc.data() });
-                                } else {
-                                    // Usuário cadastrado mas sem perfil (ex: acabou de se registrar)
-                                    // Assume 'client' por padrão
+                           const userRef = db.collection('users').doc(userAuth.uid);
+                           try {
+                               userProfileUnsubscribe = userRef.onSnapshot((doc) => {
+                                   let profileData = null;
+                                   if (doc.exists) {
+                                       console.log("Perfil encontrado/atualizado:", doc.data());
+                                       profileData = doc.data();
+                                       setUser({ auth: userAuth, profile: profileData });
+                                   } else {
+                                       console.log("Perfil não encontrado, tentando criar...");
+                                       profileData = {
+                                           email: userAuth.email,
+                                           role: 'client', 
+                                           createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                                       };
+                                       userRef.set(profileData).then(() => {
+                                           console.log("Perfil criado após não encontrar no snapshot.");
+                                       }).catch(err => {
+                                            console.error("Erro ao tentar criar perfil no snapshot:", err);
+                                       });
+                                       setUser({ auth: userAuth, profile: profileData }); // Seta o perfil localmente
+                                   }
+                                   
+                                   setIsLoadingAuth(false); 
+                                   
+                                   // Redireciona para Home APÓS login/cadastro bem sucedido
+                                   if(window.location.hash.includes('/login') || window.location.hash.includes('/register') || window.location.hash.includes('/forgot-password')) {
+                                       window.location.hash = "#/"; 
+                                   }
+
+                               }, (error) => { 
+                                    console.error("Erro no listener do perfil do usuário:", error);
                                     setUser({ auth: userAuth, profile: { role: 'client', email: userAuth.email } });
-                                }
-                                setIsLoadingAuth(false);
-                            }, (error) => {
-                                console.error("Erro ao buscar perfil do usuário:", error);
-                                // Se der erro, assume 'client' para não travar
-                                setUser({ auth: userAuth, profile: { role: 'client', email: userAuth.email } });
-                                setIsLoadingAuth(false);
-                            });
+                                    setIsLoadingAuth(false);
+                               });
+                               
+                           } catch (error) { 
+                               console.error("Erro ao buscar/criar perfil do usuário (catch geral):", error);
+                               setUser({ auth: userAuth, profile: { role: 'client', email: userAuth.email } });
+                               setIsLoadingAuth(false);
+                           }
                         }
                     } else {
-                        // Usuário deslogado. Tenta logar anonimamente.
                         console.log("Usuário não logado, tentando login anônimo...");
-                        auth.signInAnonymously().catch(err => {
+                        authInstance.signInAnonymously().catch(err => {
                             console.error("Erro no login anônimo:", err);
+                            setUser({ auth: null, profile: { role: 'visitor' } }); 
                             setIsLoadingAuth(false);
                         });
                     }
@@ -1534,32 +1546,31 @@
                 return () => {
                     authUnsubscribe();
                     if (userProfileUnsubscribe) userProfileUnsubscribe();
-                };
-              }, [auth, db]);
+                }
+              }, [authInstance, db]);
 
               // 3. Busca os dados dos Veículos
-              useEffect(() => {
-                if (!db) return; 
-                
-                const collectionPath = `/artifacts/${appId}/public/data/vehicles`;
-                console.log(`Iniciando listener em ${collectionPath}`);
+              useEffect(() => { 
+                  if (!db) { setIsLoadingData(false); return; }; 
+                  
+                  const collectionPath = `/artifacts/${appId}/public/data/vehicles`;
+                  console.log(`Iniciando listener em ${collectionPath}`);
+                  const vehiclesCol = db.collection(collectionPath); 
+                  
+                  const unsubscribe = vehiclesCol.onSnapshot((snapshot) => { 
+                      const vehiclesData = snapshot.docs.map(doc => ({
+                          ...doc.data(),
+                          id: doc.id 
+                      }));
+                      console.log(`Dados recebidos: ${vehiclesData.length} veículos.`);
+                      setVehicles(vehiclesData);
+                      setIsLoadingData(false);
+                  }, (error) => {
+                      console.error("Erro ao buscar dados do Firestore: ", error);
+                      setIsLoadingData(false);
+                  });
 
-                const vehiclesCol = db.collection(collectionPath); 
-                
-                const unsubscribe = vehiclesCol.onSnapshot((snapshot) => { 
-                    const vehiclesData = snapshot.docs.map(doc => ({
-                        ...doc.data(),
-                        id: doc.id 
-                    }));
-                    console.log(`Dados recebidos: ${vehiclesData.length} veículos.`);
-                    setVehicles(vehiclesData);
-                    setIsLoadingData(false);
-                }, (error) => {
-                    console.error("Erro ao buscar dados do Firestore: ", error);
-                    setIsLoadingData(false);
-                });
-
-                return () => unsubscribe();
+                  return () => unsubscribe();
               }, [db, appId]); 
 
               // 4. Função de UPLOAD (Seed)
@@ -1568,16 +1579,45 @@
 
                 window.seedDatabase = async () => {
                     console.log("Iniciando o Seed do banco de dados...");
+                    
+                    // Verifica o usuário atual
+                    const currentUser = authInstance.currentUser;
+                    if (!currentUser || currentUser.isAnonymous) {
+                         alert("Acesso negado. Você precisa estar logado com uma conta de administrador.");
+                         console.warn("Seed negado: usuário não logado ou anônimo.");
+                         return;
+                    }
+                    
+                    // Verifica o 'role' do usuário no Firestore
+                    const userRef = db.collection('users').doc(currentUser.uid);
+                    const userDoc = await userRef.get();
+                    
+                    if (!userDoc.exists || userDoc.data().role !== 'admin') {
+                        alert("Acesso negado. Você não tem permissão de administrador para executar esta ação.");
+                        console.warn("Seed negado: usuário não é admin.");
+                        return;
+                    }
+                    
+                    // Usuário é admin, prossegue com o seed
+                    console.log("Usuário verificado como admin. Prosseguindo com o seed...");
                     const collectionPath = `/artifacts/${appId}/public/data/vehicles`;
                     
                     const existingData = await db.collection(collectionPath).get(); 
                     if (existingData.size > 0) {
-                        console.warn(`A coleção ${collectionPath} já contém ${existingData.size} documentos. O Seed foi cancelado para evitar duplicatas.`);
-                        alert(`O banco de dados já parece ter dados. O upload foi cancelado.`);
-                        return;
+                        if (!confirm(`A coleção ${collectionPath} já contém ${existingData.size} documentos. Deseja apagar e recadastrar?`)) {
+                           console.log("Seed cancelado pelo usuário.");
+                           return;
+                        }
+                        
+                        // Deleta dados antigos
+                        console.log("Deletando dados antigos...");
+                        const deleteBatch = db.batch();
+                        existingData.docs.forEach(doc => deleteBatch.delete(doc.ref));
+                        await deleteBatch.commit();
+                        console.log("Dados antigos deletados.");
                     }
 
-                    console.log("Banco de dados vazio. Iniciando upload em lote...");
+                    console.log("Iniciando upload em lote...");
                     const batch = db.batch(); 
                     
                     MOCK_VEHICLES_FOR_SEEDING.forEach(vehicle => {
@@ -1594,20 +1634,18 @@
                         alert("Ocorreu um erro ao fazer o upload dos dados. Verifique o console.");
                     }
                 };
-                console.log("Função de upload pronta. Digite 'seedDatabase()' no console para popular o banco.");
-              }, [db, appId]);
+                console.log("Função de upload pronta. Digite 'seedDatabase()' no console para popular o banco (requer admin).");
+              }, [db, authInstance, appId]);
 
 
               // 5. Função de Logout
               const handleSignOut = () => {
-                if (auth) {
-                    auth.signOut();
-                    // O onAuthStateChanged vai pegar o logout e logar anonimamente
-                    window.location.hash = "#/"; // Volta para home
+                if (authInstance) {
+                    authInstance.signOut();
+                    window.location.hash = "#/";
                 }
               };
-
-              // ... (resto do App, handleSearch, etc., sem alteração) ...
+              
               useEffect(() => { document.title = "WSA Seminovos — Catálogo"; }, []);
 
               const handleSearch = (q) => {
@@ -1629,7 +1667,6 @@
                 return () => window.removeEventListener("wsa-search", on);
               }, []);
 
-              // Espera tanto os dados quanto a autenticação carregarem
               if (isLoadingData || isLoadingAuth) {
                 return <LoadingScreen />;
               }
@@ -1664,9 +1701,7 @@
         
         } // Fim da função main()
         
-        // Espera a JANELA carregar antes de executar a função main()
         window.onload = main;
-
     </script>
 </body>
 </html>
