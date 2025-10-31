@@ -12,10 +12,7 @@
 
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
         body {
@@ -33,7 +30,32 @@
     <script type="text/babel">
         function main() {
             const { useEffect, useMemo, useState, useRef } = React;
+            const { createClient } = supabase; // Pega a função do SDK global
+
+            // =============================
+            // *** CONFIGURAÇÃO SUPABASE ***
+            // =============================
+            // Suas chaves já foram inseridas!
             
+            const SUPABASE_URL = 'https://gnyibunsmnetcrngnmzc.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdueWlidW5zbW5ldGNybmdubXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE4OTU0MzQsImV4cCI6MjA3NzQ3MTQzNH0.a_k06oX2E__JUT75z678woE56ZThBbY698IYOEaDQiw';
+            
+            // ----------------------------------------------------
+            // NÃO EDITE ABAIXO DESTA LINHA
+            // ----------------------------------------------------
+
+            let supabaseClient;
+            if (SUPABASE_URL.includes('SUA_SUPABASE_URL') || SUPABASE_ANON_KEY.includes('SUA_SUPABASE_ANON_KEY')) {
+                 console.error('%cERRO: Configure as variáveis SUPABASE_URL e SUPABASE_ANON_KEY no topo do <script>!', 'color: red; font-size: 16px; font-weight: bold;');
+                 const container = document.getElementById('root');
+                 container.innerHTML = `<div style="color: red; padding: 40px; text-align: center; font-family: sans-serif;"><h1>Erro de Configuração</h1><p>As chaves (URL e Key) do Supabase não foram inseridas corretamente no arquivo index.html.</p></div>`;
+                 return; // Para a execução do script
+            } else {
+                 supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                 console.log("Cliente Supabase inicializado.");
+            }
+
+
             // =============================
             // UTILITÁRIOS
             // =============================
@@ -581,12 +603,15 @@
               const [password, setPassword] = useState("");
               const [error, setError] = useState("");
               const [loading, setLoading] = useState(false);
-
               const handleLogin = async (e) => {
                 e.preventDefault(); setError(""); setLoading(true);
-                try { await firebase.auth().signInWithEmailAndPassword(email, password); } catch (err) {
-                  if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') { setError("E-mail ou senha inválidos."); } else { setError("Falha no login. Tente novamente."); }
-                  console.error("Erro de login:", err); setLoading(false);
+                try { 
+                    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                    if (error) throw error;
+                } catch (err) {
+                  setError("Falha no login. Verifique seu e-mail e senha.");
+                  console.error("Erro de login:", err);
+                  setLoading(false);
                 }
               };
               useEffect(() => { document.title = `Login — WSA Seminovos`; window.scrollTo(0, 0); }, []);
@@ -598,20 +623,25 @@
               const [error, setError] = useState("");
               const [loading, setLoading] = useState(false);
 
-              const ensureUserProfile = async (userAuth) => {
-                  if (!userAuth || !db) return;
-                  const userRef = db.collection('users').doc(userAuth.uid);
-                  try { const doc = await userRef.get(); if (!doc.exists) { console.log(`Perfil não encontrado, criando...`); await userRef.set({ email: userAuth.email, role: 'client', createdAt: firebase.firestore.FieldValue.serverTimestamp() }); console.log(`Perfil criado.`); } else { console.log(`Perfil já existe.`); } } catch (firestoreError) { console.error("Erro ao garantir perfil:", firestoreError); }
-              };
               const handleRegister = async (e) => {
-                e.preventDefault(); setError(""); setLoading(true); let userCredential = null;
-                try { userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password); await ensureUserProfile(userCredential.user); } catch (err) {
+                e.preventDefault(); setError(""); setLoading(true);
+                try {
+                    const { data, error } = await supabaseClient.auth.signUp({
+                        email: email,
+                        password: password,
+                    });
+                    if (error) throw error;
+                    // Sucesso! O onAuthStateChanged vai cuidar de criar o perfil
+                } catch (err) {
                     let errorMessage = "Falha no cadastro. Verifique os dados.";
-                    if (err.code === 'auth/email-already-in-use') {
-                        errorMessage = "Este e-mail já está em uso. Tentando garantir perfil/logar...";
-                        try { const signInCredential = await firebase.auth().signInWithEmailAndPassword(email, password); await ensureUserProfile(signInCredential.user); errorMessage = "E-mail já cadastrado. Fizemos login para você."; } catch (signInErr) { errorMessage = "Este e-mail já está cadastrado. Tente fazer login manualmente ou recuperar a senha."; }
-                    } else if (err.code === 'auth/weak-password') { errorMessage = "Senha muito fraca. Use pelo menos 6 caracteres."; } else { console.error("Erro de cadastro:", err); }
-                    setError(errorMessage); setLoading(false);
+                    if (err.message.includes("User already registered")) {
+                        errorMessage = "Este e-mail já está em uso. Tente fazer login.";
+                    } else if (err.message.includes("password should be at least 6 characters")) {
+                        errorMessage = "Senha muito fraca. Use pelo menos 6 caracteres.";
+                    }
+                    console.error("Erro de cadastro:", err);
+                    setError(errorMessage);
+                    setLoading(false);
                 }
               };
               useEffect(() => { document.title = `Cadastro — WSA Seminovos`; window.scrollTo(0, 0); }, []);
@@ -621,7 +651,16 @@
                 const [email, setEmail] = useState(""); const [error, setError] = useState(""); const [success, setSuccess] = useState(""); const [loading, setLoading] = useState(false);
                 const handlePasswordReset = async (e) => {
                     e.preventDefault(); setError(""); setSuccess(""); setLoading(true);
-                    try { await firebase.auth().sendPasswordResetEmail(email); setSuccess("Verifique seu e-mail! Enviamos um link para você redefinir sua senha."); } catch (err) { console.error("Erro ao redefinir senha:", err); if (err.code === 'auth/user-not-found') { setError("Não encontramos uma conta com este e-mail."); } else { setError("Ocorreu um erro. Tente novamente."); } }
+                    try {
+                        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+                            redirectTo: window.location.origin + window.location.pathname // Volta para a URL base do site
+                        });
+                        if (error) throw error;
+                        setSuccess("Verifique seu e-mail! Enviamos um link para você redefinir sua senha."); 
+                    } catch (err) { 
+                        console.error("Erro ao redefinir senha:", err); 
+                        if (err.message.includes("User not found")) { setError("Não encontramos uma conta com este e-mail."); } else { setError("Ocorreu um erro. Tente novamente."); }
+                    }
                     setLoading(false);
                 };
                 useEffect(() => { document.title = `Recuperar Senha — WSA Seminovos`; window.scrollTo(0, 0); }, []);
@@ -646,7 +685,7 @@
             function AdminLayout({ children }) {
                 return ( <main className="mx-auto max-w-7xl px-3 py-8"> <h1 className="text-3xl font-extrabold text-white mb-6">Área Administrativa</h1> <div className="bg-gray-900 ring-1 ring-gray-800 rounded-2xl p-6"> {children} </div> </main> );
             }
-            function ImageUploader({ initialImages = [], onUploadComplete, maxFiles = 10, storage }) {
+            function ImageUploader({ initialImages = [], onUploadComplete, maxFiles = 10, storageBucketName }) {
                 const [files, setFiles] = useState([]);
                 const [previews, setPreviews] = useState(initialImages);
                 const [uploading, setUploading] = useState(false);
@@ -674,18 +713,29 @@
                 };
                 const handleUpload = async () => {
                    if (files.length === 0) { onUploadComplete(previews.filter(p => p.startsWith('http'))); return; }
-                   if (!storage) { alert("Erro: Serviço de Storage não inicializado."); return; }
+                   if (!supabaseClient) { alert("Erro: Cliente Supabase não inicializado."); return; }
                    setUploading(true); setProgress({});
                    const uploadPromises = files.map(file => {
-                       return new Promise((resolve, reject) => {
-                           const storageRef = storage.ref();
-                           const fileRef = storageRef.child(`vehicle_images/${Date.now()}_${file.name.replace(/\s+/g, '_')}`);
-                           const uploadTask = fileRef.put(file);
-                           uploadTask.on('state_changed',
-                               (snapshot) => { const percentage = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100); setProgress(prev => ({ ...prev, [file.name]: percentage })); },
-                               (error) => { console.error("Erro no upload:", file.name, error); reject({fileName: file.name, error}); },
-                               async () => { try { const downloadURL = await uploadTask.snapshot.ref.getDownloadURL(); resolve(downloadURL); } catch (getUrlError) { console.error("Erro ao obter URL:", file.name, getUrlError); reject({fileName: file.name, error: getUrlError}); } }
-                           );
+                       return new Promise(async (resolve, reject) => {
+                           const fileName = `vehicle_images/${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+                           try {
+                               const { data, error } = await supabaseClient.storage
+                                   .from(storageBucketName) // Nome do Bucket
+                                   .upload(fileName, file, {
+                                       cacheControl: '3600',
+                                       upsert: false
+                                   });
+                               if (error) throw error;
+                               const { data: publicUrlData } = supabaseClient.storage
+                                   .from(storageBucketName)
+                                   .getPublicUrl(fileName);
+                               if (!publicUrlData.publicUrl) { throw new Error("Não foi possível obter a URL pública da imagem."); }
+                               console.log('URL Pública:', publicUrlData.publicUrl);
+                               resolve(publicUrlData.publicUrl);
+                           } catch (error) {
+                               console.error("Erro no upload:", file.name, error);
+                               reject({fileName: file.name, error});
+                           }
                        });
                    });
                    try {
@@ -696,7 +746,7 @@
                        onUploadComplete(finalURLs);
                        setFiles([]);
                        setPreviews(finalURLs);
-                   } catch (errorInfo) { console.error("Falha no upload:", errorInfo); alert(`Erro ao fazer upload da imagem "${errorInfo.fileName}". Verifique o console e as regras de segurança.`);
+                   } catch (errorInfo) { console.error("Falha no upload:", errorInfo); alert(`Erro ao fazer upload da imagem "${errorInfo.fileName}". Verifique o console e as permissões do Bucket.`);
                    } finally { setUploading(false); }
                 };
                 return (
@@ -725,24 +775,24 @@
                     </div>
                 );
             }
-            function CarForm({ db, appId, vehicleId, onSave, storage }) {
+            function CarForm({ vehicleId, onSave }) {
                 const [vehicle, setVehicle] = useState({ brand: '', model: '', version: '', yearFab: '', yearModel: '', fuel: 'Flex', transmission: 'Manual', engine: '', body: 'Hatch', color: '', plateFinal: '', doors: 4, km: '', priceBase: '', price: '', tags: [], photos: [], store: { name: '', phone: '', address: '', hours: [{d: 'Segunda à sexta', h: ''}, {d: 'Sábado', h: ''}, {d: 'Domingo', h: ''}] } });
                 const [loading, setLoading] = useState(false);
                 const [error, setError] = useState('');
-                const [isEditMode, setIsEditMode] = useState(!!vehicleId);
+                const isEditMode = !!vehicleId;
                 const [uploadedPhotoUrls, setUploadedPhotoUrls] = useState([]);
                 useEffect(() => {
-                    const loadVehicle = () => {
+                    const loadVehicle = async () => {
                         setLoading(true); setError('');
-                        const docRef = db.collection(`/artifacts/${appId}/public/data/vehicles`).doc(vehicleId);
-                        docRef.get().then(doc => {
-                            if (doc.exists) {
-                                const data = doc.data();
+                        try {
+                            const { data, error } = await supabaseClient.from('vehicles').select('*').eq('id', vehicleId).single();
+                            if (error) throw error;
+                            if (data) {
                                 setVehicle({ ...data, yearFab: data.yearFab || '', yearModel: data.yearModel || '', km: data.km || '', price: data.price || '', priceBase: data.priceBase || '', doors: data.doors || 4, tags: data.tags || [], photos: data.photos || [], store: { name: data.store?.name || '', phone: data.store?.phone || '', address: data.store?.address || '', hours: [ {...(data.store?.hours?.[0] || {d:'Segunda à sexta', h:''})}, {...(data.store?.hours?.[1] || {d:'Sábado', h:''})}, {...(data.store?.hours?.[2] || {d:'Domingo', h:''})} ] } });
                                 setUploadedPhotoUrls(data.photos || []);
                             } else { setError('Veículo não encontrado.'); window.location.hash = '#/admin'; }
-                            setLoading(false);
-                        }).catch(err => { console.error("Erro ao buscar veículo:", err); setError('Erro ao carregar dados do veículo.'); setLoading(false); });
+                        } catch (err) { console.error("Erro ao buscar veículo:", err); setError('Erro ao carregar dados do veículo.');
+                        } finally { setLoading(false); }
                     };
                     if (isEditMode) { loadVehicle();
                     } else {
@@ -750,7 +800,7 @@
                          setUploadedPhotoUrls([]); setLoading(false);
                     }
                     setError('');
-                }, [db, appId, vehicleId, isEditMode]);
+                }, [vehicleId, isEditMode]);
                 const handleChange = (e) => { const { name, value, type } = e.target; const val = (type === 'number' && value === '') ? '' : (type === 'number' ? Number(value) : value); setVehicle(prev => ({ ...prev, [name]: val })); };
                 const handleNestedChange = (parent, name, value) => { setVehicle(prev => ({ ...prev, [parent]: { ...prev[parent], [name]: value } })); };
                 const handleTagChange = (e) => { setVehicle(prev => ({ ...prev, tags: e.target.value.split(',').map(tag => tag.trim()).filter(Boolean) })); };
@@ -764,9 +814,7 @@
                  };
                 const handlePhotoUploadComplete = (urls) => { console.log("Formulário recebeu URLs finais:", urls); setUploadedPhotoUrls(urls); setVehicle(prev => ({...prev, photos: urls})); };
                 const handleSubmit = async (e) => {
-                    e.preventDefault();
-                    if (!storage) { setError("Erro: Serviço de Storage não inicializado."); return; }
-                    setLoading(true); setError('');
+                    e.preventDefault(); setLoading(true); setError('');
                     try {
                         const newId = Date.now();
                         const dataToSave = {
@@ -784,10 +832,19 @@
                         };
                          dataToSave.slug = generateSlug(dataToSave);
                          if (!dataToSave.brand || !dataToSave.model || !dataToSave.version || !dataToSave.price || !dataToSave.km) { throw new Error("Campos obrigatórios (Marca, Modelo, Versão, Preço, KM) não podem estar vazios."); }
-                         const collectionPath = `/artifacts/${appId}/public/data/vehicles`;
-                         const docId = isEditMode ? vehicleId : dataToSave.id.toString();
-                         const docRef = db.collection(collectionPath).doc(docId);
-                         if (isEditMode) { await docRef.update(dataToSave); console.log("Veículo atualizado:", docId); } else { await docRef.set(dataToSave); console.log("Veículo adicionado:", docId); }
+                         
+                         let query;
+                         if (isEditMode) {
+                             console.log("Atualizando veículo:", dataToSave);
+                             query = supabaseClient.from('vehicles').update(dataToSave).eq('id', vehicleId);
+                         } else {
+                             console.log("Inserindo novo veículo:", dataToSave);
+                             query = supabaseClient.from('vehicles').insert(dataToSave);
+                         }
+                         const { error: dbError } = await query;
+                         if (dbError) throw dbError;
+                         
+                         console.log("Veículo salvo com sucesso.");
                          onSave();
                     } catch (err) { console.error("Erro ao salvar:", err); setError(`Erro ao salvar: ${err.message}.`); setLoading(false); }
                 };
@@ -815,7 +872,7 @@
                             <Field label="Tags (separadas por vírgula)"><input type="text" name="tags" value={(vehicle.tags || []).join(', ')} onChange={handleTagChange} placeholder="Ex: Mais pesquisado" className="input-admin" /></Field>
                             <Field label="Cidade"><input type="text" name="city" value={vehicle.city || ''} onChange={handleChange} required className="input-admin" /></Field>
                             <Field label="Estado (UF)"><input type="text" name="state" value={vehicle.state || ''} onChange={handleChange} maxLength="2" required className="input-admin" /></Field>
-                            <div className="col-span-1 md:col-span-2 lg:grid-cols-3 grid grid-cols-1 md:grid-cols-2 gap-6 p-4 border border-gray-700 rounded-lg mt-4">
+                            <div className="col-span-1 md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6 p-4 border border-gray-700 rounded-lg mt-4">
                                 <h3 className="md:col-span-2 text-lg font-semibold text-white mb-2">Informações da Loja</h3>
                                 <Field label="Nome da Loja"><input type="text" name="store.name" value={vehicle.store?.name || ''} onChange={e => handleNestedChange('store', 'name', e.target.value)} required className="input-admin" /></Field>
                                 <Field label="Telefone da Loja"><input type="text" name="store.phone" value={vehicle.store?.phone || ''} onChange={e => handleNestedChange('store', 'phone', e.target.value)} className="input-admin" /></Field>
@@ -828,7 +885,7 @@
                                 ))}
                             </div>
                             <div className="col-span-1 md:col-span-2 lg:col-span-3 mt-4">
-                               <ImageUploader initialImages={uploadedPhotoUrls} onUploadComplete={handlePhotoUploadComplete} storage={storage} />
+                               <ImageUploader initialImages={uploadedPhotoUrls} onUploadComplete={handlePhotoUploadComplete} storageBucketName="vehicle_images" />
                             </div>
                             <div className="col-span-1 md:col-span-2 lg:col-span-3 flex justify-end gap-4 mt-6">
                                 <Button type="button" onClick={() => window.location.hash = '#/admin'} className="bg-gray-700 text-white hover:bg-gray-600" disabled={loading}> Cancelar </Button>
@@ -838,13 +895,18 @@
                     </AdminLayout>
                 );
             }
-            function AdminDashboard({ db, appId, vehicles }) {
+            function AdminDashboard({ vehicles }) {
                 const [loading, setLoading] = useState(false);
                 const [error, setError] = useState('');
                 const handleDelete = async (vehicleId, vehicleName) => {
                     if (!confirm(`Tem certeza que deseja excluir o veículo "${vehicleName}" (${vehicleId})? Esta ação não pode ser desfeita.`)) { return; }
                     setLoading(true); setError('');
-                    try { const docRef = db.collection(`/artifacts/${appId}/public/data/vehicles`).doc(vehicleId.toString()); await docRef.delete(); console.log("Veículo excluído:", vehicleId); } catch (err) { console.error("Erro ao excluir:", err); setError('Erro ao excluir veículo.'); } finally { setLoading(false); }
+                    try { 
+                        const { error } = await supabaseClient.from('vehicles').delete().eq('id', vehicleId);
+                        if (error) throw error;
+                        console.log("Veículo excluído:", vehicleId);
+                    } catch (err) { console.error("Erro ao excluir:", err); setError('Erro ao excluir veículo.'); 
+                    } finally { setLoading(false); }
                 };
                 return (
                     <AdminLayout>
@@ -898,17 +960,17 @@
               return hash.replace(/^#/, "");
             }
 
-            function Router({ vehicles, user, db, appId, storage }) {
+            function Router({ vehicles, user }) {
               const route = useHashRoute();
               const isAdmin = user && user.profile && user.profile.role === 'admin';
-              const isLoadingAuth = user === undefined; // Estado inicial de carregamento
+              const isLoadingAuth = user === undefined;
 
               if (isLoadingAuth) {
                   return <LoadingScreen message="Autenticando..." />;
               }
 
-              if (route.startsWith("/login")) return <LoginPage db={db} />;
-              if (route.startsWith("/register")) return <RegisterPage db={db} />;
+              if (route.startsWith("/login")) return <LoginPage />;
+              if (route.startsWith("/register")) return <RegisterPage />;
               if (route.startsWith("/forgot-password")) return <ForgotPasswordPage />;
 
               if (route.startsWith("/admin")) {
@@ -920,11 +982,11 @@
                       return <LoadingScreen message="Acesso negado. Redirecionando..."/>;
                   }
                   
-                  if (route === "/admin") return <AdminDashboard db={db} appId={appId} vehicles={vehicles} />;
-                  if (route === "/admin/add") return <CarForm db={db} appId={appId} storage={storage} onSave={() => window.location.hash = "#/admin"} />;
+                  if (route === "/admin") return <AdminDashboard vehicles={vehicles} />;
+                  if (route === "/admin/add") return <CarForm onSave={() => window.location.hash = "#/admin"} />;
                   if (route.startsWith("/admin/edit/")) {
                       const vehicleId = route.split("/admin/edit/")[1];
-                      return <CarForm db={db} appId={appId} storage={storage} vehicleId={vehicleId} onSave={() => window.location.hash = "#/admin"} />;
+                      return <CarForm vehicleId={vehicleId} onSave={() => window.location.hash = "#/admin"} />;
                   }
                    return <AdminLayout><h2>Página Admin não encontrada</h2></AdminLayout>;
               }
@@ -944,319 +1006,213 @@
             // APP RAIZ
             // =============================
             function DealershipCatalogApp() {
-              const [db, setDb] = useState(null);
-              const [authInstance, setAuthInstance] = useState(null);
-              const [storage, setStorage] = useState(null);
-              const [appId, setAppId] = useState('default-app-id');
               const [vehicles, setVehicles] = useState([]);
               const [user, setUser] = useState(undefined); // undefined = inicial, null = anônimo, objeto = logado
               const [isLoadingData, setIsLoadingData] = useState(true);
               const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
-              // 1. Inicializa o Firebase
+              // 1. Gerencia o estado de Autenticação (usuário logado)
               useEffect(() => {
-                try {
-                    const firebaseConfig = {
-                      apiKey: "AIzaSyCkCIttysdLHMbEr4xfBoIHrMT6-khSrRk",
-                      authDomain: "wsa-site-concessionaria.firebaseapp.com",
-                      projectId: "wsa-site-concessionaria",
-                      storageBucket: "wsa-site-concessionaria.appspot.com",
-                      messagingSenderId: "860029979435",
-                      appId: "1:860029979435:web:72fb9c7e622119e9f9936e",
-                      measurementId: "G-N9KZGZ7PZB"
-                    };
-                    
-                    const appIdValue = firebaseConfig.projectId; // Usa o Project ID como App ID
+                if (!supabaseClient) { setIsLoadingAuth(false); return; } // Para se o cliente não foi inicializado
 
-                    if (firebase.apps.length === 0) {
-                        const app = firebase.initializeApp(firebaseConfig);
-                        setAuthInstance(firebase.auth(app));
-                        setDb(firebase.firestore(app));
-                        setStorage(firebase.storage(app));
-                        firebase.firestore.setLogLevel('debug');
-                        setAppId(appIdValue);
-                        console.log("Firebase Inicializado com appId:", appIdValue);
-                    } else {
-                        const app = firebase.apps[0];
-                        setAuthInstance(firebase.auth(app));
-                        setDb(firebase.firestore(app));
-                        setStorage(firebase.storage(app));
-                        setAppId(appIdValue);
-                        console.log("Firebase Reutilizado com appId:", appIdValue);
+                console.log("Iniciando listener de autenticação (Supabase)...");
+
+                supabaseClient.auth.getSession().then(({ data: { session } }) => {
+                    console.log("Sessão inicial recebida:", session);
+                    if (!session) {
+                        setIsLoadingAuth(false); 
                     }
-                } catch (e) {
-                    console.error("Erro CRÍTICO ao inicializar o Firebase. Verifique a configuração.", e);
-                    setIsLoadingAuth(false);
-                    setIsLoadingData(false);
-                }
-              }, []);
+                }).catch(err => {
+                    console.error("Erro ao pegar sessão:", err);
+                    setIsLoadingAuth(false); 
+                });
+                
+                const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+                    console.log("onAuthStateChange disparado (Supabase):", _event, session?.user?.id);
+                    
+                    if (_event === 'INITIAL_SESSION') {
+                        // Não seta loading(false) aqui, espera buscar o perfil
+                    }
+                    if (_event === 'SIGNED_OUT') {
+                        setUser({ auth: null, profile: { role: 'visitor' } });
+                        setIsLoadingAuth(false);
+                        console.log("Estado definido: Visitante (deslogado)");
+                        return; 
+                    }
 
-              // 2. Gerencia o estado de Autenticação (usuário logado)
-              useEffect(() => {
-                if (!authInstance || !db) {
-                    if(isLoadingAuth) setIsLoadingAuth(false); 
-                    return;
-                }
-
-                console.log("Iniciando listener de autenticação...");
-                let userProfileUnsubscribe = null;
-
-                const authUnsubscribe = authInstance.onAuthStateChanged(async (userAuth) => {
-                    console.log("onAuthStateChanged disparado...");
-                    // Não seta isLoadingAuth(true) aqui para evitar piscar tela
-                    if (userProfileUnsubscribe) userProfileUnsubscribe();
-
-                    if (userAuth) {
-                        console.log("Usuário autenticado:", userAuth.uid, "Anônimo:", userAuth.isAnonymous);
-                        if (userAuth.isAnonymous) {
-                            setUser({ auth: userAuth, profile: { role: 'visitor' } });
-                            setIsLoadingAuth(false);
-                            console.log("Estado definido: Visitante anônimo");
-                        } else {
-                           console.log("Usuário não anônimo, buscando/criando perfil...");
-                           const userRef = db.collection('users').doc(userAuth.uid);
-                           let profileData = null;
-                           let docExists = false;
-
-                           try {
-                               // Adiciona listener para perfil
-                               userProfileUnsubscribe = userRef.onSnapshot(async (doc) => {
-                                   if (doc.exists) {
-                                       console.log("Perfil encontrado/atualizado via onSnapshot:", doc.data());
-                                       setUser({ auth: userAuth, profile: doc.data() });
-                                       setIsLoadingAuth(false); 
-                                        if(window.location.hash.includes('/login') || window.location.hash.includes('/register') || window.location.hash.includes('/forgot-password')) {
-                                           console.log("Redirecionando para Home...");
-                                           window.location.hash = "#/";
-                                       }
-                                   } else {
-                                       console.log("Perfil não encontrado via onSnapshot, tentando criar...");
-                                       try {
-                                           profileData = {
-                                               email: userAuth.email,
-                                               role: 'client',
-                                               createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                                           };
-                                           await userRef.set(profileData);
-                                           console.log("Perfil criado após não encontrar no snapshot.");
-                                       } catch (creationError){
-                                            console.error("Erro ao tentar criar perfil no snapshot:", creationError);
-                                            setUser({ auth: userAuth, profile: { role: 'client', email: userAuth.email, firestoreError: true } });
-                                            setIsLoadingAuth(false); 
-                                       }
-                                   }
-                               }, (error) => { 
-                                    console.error("Erro no listener onSnapshot do perfil:", error);
-                                    setUser({ auth: userAuth, profile: { role: 'client', email: userAuth.email, firestoreError: true } });
-                                    setIsLoadingAuth(false); 
-                               });
+                    if (session?.user) {
+                       console.log("Usuário autenticado, buscando/criando perfil...");
+                       const userRef = supabaseClient.from('profiles').select('role, email').eq('id', session.user.id).single();
+                       
+                       try {
+                           const { data: profileData, error, status } = await userRef;
+                           
+                           if (error && status !== 406) { throw error; }
+                           
+                           if (profileData) {
+                               console.log("Perfil encontrado:", profileData);
+                               setUser({ auth: session.user, profile: profileData });
+                           } else {
+                               console.log("Perfil não encontrado, criando perfil 'client'...");
+                               const { error: insertError } = await supabaseClient
+                                   .from('profiles')
+                                   .insert({ id: session.user.id, email: session.user.email, role: 'client' });
+                               if (insertError) throw insertError;
                                
-                           } catch (error) { 
-                               console.error("Erro CRÍTICO ao adicionar listener do perfil:", error);
-                               setUser({ auth: userAuth, profile: { role: 'client', email: userAuth.email, firestoreError: true } });
-                               setIsLoadingAuth(false); 
+                               setUser({ auth: session.user, profile: { role: 'client', email: session.user.email } });
                            }
-                        }
+                           
+                           if(window.location.hash.includes('/login') || window.location.hash.includes('/register') || window.location.hash.includes('/forgot-password')) {
+                               console.log("Redirecionando para Home...");
+                               window.location.hash = "#/";
+                           }
+                           
+                       } catch(error) {
+                           console.error("Erro CRÍTICO ao buscar/criar perfil no Supabase:", error.message);
+                           setUser({ auth: session.user, profile: { role: 'client', email: session.user.email, dberror: true } });
+                       } finally {
+                           setIsLoadingAuth(false); 
+                       }
                     } else {
-                        console.log("Usuário não logado, tentando login anônimo...");
-                        authInstance.signInAnonymously().catch(err => {
-                            console.error("Erro no login anônimo:", err);
-                            setUser({ auth: null, profile: { role: 'visitor' } }); 
-                        }).finally(() => {
-                           setIsLoadingAuth(false);
-                           console.log("Estado definido: Visitante (anônimo ou falha)");
-                        });
+                         setUser({ auth: null, profile: { role: 'visitor' } });
+                         setIsLoadingAuth(false);
+                         console.log("Estado definido: Visitante (sem sessão)");
                     }
                 });
 
                 return () => {
                     console.log("Limpando listener de autenticação.");
-                    authUnsubscribe();
-                    if (userProfileUnsubscribe) {
-                        console.log("Limpando listener do perfil.");
-                        userProfileUnsubscribe();
-                    }
+                    subscription?.unsubscribe();
                 }
-              }, [authInstance, db]);
+              }, []);
 
-              // 3. Busca os dados dos Veículos
+              // 2. Busca os dados dos Veículos
               useEffect(() => {
-                  if (!db || appId === 'default-app-id') { setIsLoadingData(false); return; }; 
-
-                  const collectionPath = `/artifacts/${appId}/public/data/vehicles`;
-                  console.log(`Iniciando listener de veículos em ${collectionPath}`);
-                  const vehiclesCol = db.collection(collectionPath);
-
-                  const unsubscribe = vehiclesCol.onSnapshot((snapshot) => {
-                      const vehiclesData = snapshot.docs.map(doc => {
-                          const data = doc.data();
-                          return {
-                              ...data,
-                              id: Number(data.id) || null,
-                              yearFab: Number(data.yearFab) || null,
-                              yearModel: Number(data.yearModel) || null,
-                              doors: Number(data.doors) || null,
-                              km: Number(data.km) || 0,
-                              price: Number(data.price) || 0,
-                              priceBase: Number(data.priceBase) || Number(data.price) || 0,
-                              tags: Array.isArray(data.tags) ? data.tags : [],
-                              photos: Array.isArray(data.photos) ? data.photos : [],
-                              store: { name: data.store?.name || '', phone: data.store?.phone || '', address: data.store?.address || '', hours: Array.isArray(data.store?.hours) ? data.store.hours : [] }
-                          };
-                      });
-                      console.log(`Dados de veículos recebidos: ${vehiclesData.length}`);
-                      setVehicles(vehiclesData);
-                      setIsLoadingData(false);
-                  }, (error) => {
-                      console.error("Erro ao buscar veículos do Firestore: ", error);
-                      if (error.code === 'permission-denied') {
-                          console.error(`VERIFIQUE AS REGRAS (${error.code}) para: ${collectionPath}`);
-                          alert("Erro: Permissão negada para ler veículos.");
-                      } else {
-                          alert("Erro ao carregar veículos.");
-                      }
-                      setIsLoadingData(false);
-                  });
+                  if (!supabaseClient) { setIsLoadingData(false); return; }; 
+                  
+                  console.log(`Iniciando listener de veículos (Supabase)...`);
+                  
+                  const getVehicles = async () => {
+                       try {
+                            const { data, error } = await supabaseClient.from('vehicles').select('*');
+                            if (error) throw error;
+                            
+                            const vehiclesData = data.map(doc => {
+                                const data = doc;
+                                return {
+                                    ...data,
+                                    id: Number(data.id) || null,
+                                    yearFab: Number(data.yearFab) || null,
+                                    yearModel: Number(data.yearModel) || null,
+                                    doors: Number(data.doors) || null,
+                                    km: Number(data.km) || 0,
+                                    price: Number(data.price) || 0,
+                                    priceBase: Number(data.priceBase) || Number(data.price) || 0,
+                                    tags: Array.isArray(data.tags) ? data.tags : [],
+                                    photos: Array.isArray(data.photos) ? data.photos : [],
+                                    store: { name: data.store?.name || '', phone: data.store?.phone || '', address: data.store?.address || '', hours: Array.isArray(data.store?.hours) ? data.store.hours : [] }
+                                };
+                            });
+                            console.log(`Dados de veículos recebidos: ${vehiclesData.length}`);
+                            setVehicles(vehiclesData);
+                            setIsLoadingData(false);
+                        } catch (error) {
+                            console.error("Erro ao buscar veículos do Supabase: ", error);
+                            alert("Erro ao carregar veículos. Verifique o console e as permissões (RLS) da tabela 'vehicles'.");
+                            setIsLoadingData(false);
+                        }
+                  };
+                  
+                  getVehicles(); 
+                  
+                  const channel = supabaseClient
+                    .channel('public:vehicles')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicles' }, payload => {
+                      console.log('Mudança nos veículos recebida!', payload);
+                      getVehicles(); 
+                    })
+                    .subscribe();
 
                   return () => {
-                      console.log("Limpando listener de veículos.");
-                      unsubscribe();
+                      console.log("Limpando listener de veículos (Supabase).");
+                      supabaseClient.removeChannel(channel);
                   }
-              }, [db, appId]);
+              }, []); 
 
-              // 4. Função de UPLOAD (Seed)
+              // 3. Função de UPLOAD (Seed)
               useEffect(() => {
-                if (!db || !authInstance || appId === 'default-app-id') return;
+                if (!supabaseClient || !user) return; 
 
                 window.seedDatabase = async () => {
-                    console.log("Iniciando o Seed do banco de dados...");
+                    console.log("Iniciando o Seed do banco de dados (Supabase)...");
                     
-                    const currentUser = authInstance.currentUser;
-                    if (!currentUser || currentUser.isAnonymous) {
-                         alert("Acesso negado. Você precisa estar logado com uma conta de administrador.");
-                         console.error("Seed negado: usuário não logado ou anônimo.");
+                    if (user.profile?.role !== 'admin') {
+                         alert("Acesso negado. Você precisa ser um administrador.");
+                         console.error("Seed negado: usuário não é admin.");
                          return;
                     }
                     
-                    console.log("Verificando permissão de admin para:", currentUser.uid);
-                    const userRef = db.collection('users').doc(currentUser.uid);
-                    let userDoc;
-                    try {
-                        userDoc = await userRef.get();
-                        if (!userDoc.exists || userDoc.data().role !== 'admin') {
-                            alert("Acesso negado. Você não tem permissão de administrador para executar esta ação. (Verifique o Firestore)");
-                            console.error("Seed negado: usuário não é admin ou perfil não encontrado.", userDoc.exists ? userDoc.data().role : 'Não existe');
-                            return;
-                        }
-                    } catch (e) {
-                         alert("Erro ao verificar permissão de admin. Verifique as Regras do Firestore e o console.");
-                         console.error("Erro ao verificar admin:", e);
-                         return;
+                    if (!confirm(`Tem certeza que deseja APAGAR TODOS os veículos existentes e cadastrar ${MOCK_VEHICLES_FOR_SEEDING.length} veículos de exemplo?`)) {
+                       console.log("Seed cancelado.");
+                       return;
                     }
-                    
+
                     console.log("Usuário verificado como admin. Prosseguindo com o seed...");
-                    const collectionPath = `/artifacts/${appId}/public/data/vehicles`;
-                    const vehiclesCol = db.collection(collectionPath);
-                    
-                    let existingDataSize = 0;
+                    setLoadingData(true); 
+
                     try {
-                        const existingData = await vehiclesCol.get();
-                        existingDataSize = existingData.size;
-                        console.log(`Coleção ${collectionPath} contém ${existingDataSize} documentos.`);
-                    } catch (e) {
-                         alert("Erro ao ler coleção de veículos. Verifique as regras do Firestore e o console.");
-                         console.error("Erro ao ler veículos:", e);
-                         return;
-                    }
-                    
-                    if (existingDataSize > 0) {
-                        if (!confirm(`A coleção ${collectionPath} já contém ${existingDataSize} documentos. Deseja APAGAR TODOS e recadastrar os ${MOCK_VEHICLES_FOR_SEEDING.length} veículos de exemplo?`)) {
-                           console.log("Seed cancelado pelo usuário.");
-                           return;
-                        }
+                        console.log("Deletando veículos antigos...");
+                        const { error: deleteError } = await supabaseClient.from('vehicles').delete().neq('id', 0); 
+                        if (deleteError) throw deleteError;
                         
-                        console.log("Deletando dados antigos...");
-                        const deleteBatch = db.batch();
-                        const oldDocs = await vehiclesCol.limit(400).get(); 
-                        if (oldDocs.size > 0) {
-                           oldDocs.docs.forEach(doc => deleteBatch.delete(doc.ref));
-                           await deleteBatch.commit();
-                           console.log(`${oldDocs.size} documentos antigos deletados (ou o limite). Repita se necessário.`);
-                           if(oldDocs.size >= 400) {
-                               alert(`${oldDocs.size} documentos antigos deletados. Recarregue e execute novamente se havia mais.`);
-                               return;
-                           }
-                        } else {
-                             console.log("Nenhum documento antigo encontrado para deletar.");
-                        }
-                    }
-
-                    console.log(`Iniciando upload em lote de ${MOCK_VEHICLES_FOR_SEEDING.length} veículos...`);
-                    const batchSize = 400;
-                    for (let i = 0; i < MOCK_VEHICLES_FOR_SEEDING.length; i += batchSize) {
-                        const batch = db.batch();
-                        const chunk = MOCK_VEHICLES_FOR_SEEDING.slice(i, i + batchSize);
-                        console.log(`Processando lote ${i / batchSize + 1} com ${chunk.length} veículos...`);
-
-                        chunk.forEach(vehicle => {
-                            const docId = vehicle.id.toString(); 
-                            const docRef = db.collection(collectionPath).doc(docId);
+                        console.log("Veículos antigos deletados. Inserindo novos...");
+                        
+                        const vehiclesToInsert = MOCK_VEHICLES_FOR_SEEDING.map(vehicle => {
                             const cleanVehicle = Object.fromEntries(Object.entries(vehicle).filter(([_, v]) => v != null));
-                            batch.set(docRef, cleanVehicle);
+                            return {
+                                ...cleanVehicle,
+                                slug: generateSlug(cleanVehicle),
+                                store: { ...cleanVehicle.store, hours: cleanVehicle.store.hours || [] }
+                            };
                         });
+                        
+                        const { error: insertError } = await supabaseClient.from('vehicles').insert(vehiclesToInsert);
+                        if (insertError) throw insertError;
+                        
+                        console.log(`SUCESSO! ${MOCK_VEHICLES_FOR_SEEDING.length} veículos cadastrados.`);
+                        alert(`Sucesso! ${MOCK_VEHICLES_FOR_SEEDING.length} veículos cadastrados.`);
 
-                        try {
-                            await batch.commit();
-                            console.log(`Lote ${i / batchSize + 1} enviado com sucesso.`);
-                        } catch (e) {
-                            console.error(`Erro ao enviar lote ${i / batchSize + 1}: `, e);
-                            alert(`Ocorreu um erro ao fazer o upload do lote ${i / batchSize + 1}. Verifique o console e as regras do Firestore.`);
-                            return;
-                        }
+                    } catch (e) {
+                        console.error("Erro ao executar Seed: ", e);
+                        alert("Ocorreu um erro ao fazer o upload dos dados. Verifique o console e as permissões da tabela 'vehicles'.");
+                    } finally {
+                        setLoadingData(false); 
                     }
-
-                    console.log(`SUCESSO! ${MOCK_VEHICLES_FOR_SEEDING.length} veículos foram cadastrados.`);
-                    alert(`Sucesso! ${MOCK_VEHICLES_FOR_SEEDING.length} veículos foram cadastrados.`);
                 };
                 console.log("Função de upload 'seedDatabase()' pronta. Digite no console para popular o banco (requer admin logado).");
                 return () => { delete window.seedDatabase; console.log("Função seedDatabase removida."); }
-              }, [db, authInstance, appId]);
+              }, [user]); // Depende do 'user' para verificar o 'role'
 
-              // 5. Função de Logout
-              const handleSignOut = () => {
-                if (authInstance) {
+              // 4. Função de Logout
+              const handleSignOut = async () => {
+                if (supabaseClient) {
                     console.log("Deslogando usuário...");
-                    authInstance.signOut();
+                    const { error } = await supabaseClient.auth.signOut();
+                    if(error) console.error("Erro ao deslogar:", error);
                     window.location.hash = "#/";
                 }
               };
               
-              // 6. Efeito para Título Padrão
+              // 5. Efeito para Título Padrão
               useEffect(() => { document.title = "WSA Seminovos — Catálogo"; }, []);
 
-              // 7. Função e Efeito para Busca no Header
+              // 6. Função e Efeito para Busca no Header
               const handleSearch = (q) => {
-                window.location.hash = "#/estoque";
-                localStorage.setItem("wsa_query", q);
-                window.dispatchEvent(new Event("wsa-search"));
+                window.location.hash = `#/estoque?q=${encodeURIComponent(q)}`; // Passa a busca pela URL
               };
 
-              useEffect(() => {
-                const on = () => {
-                  const input = document.querySelector("input[aria-label='Buscar no estoque']");
-                  const q = localStorage.getItem("wsa_query") || "";
-                  if (input) {
-                    input.value = q;
-                    input.dispatchEvent(new Event("input", { bubbles: true }));
-                  }
-                };
-                window.addEventListener("wsa-search", on);
-                return () => window.removeEventListener("wsa-search", on);
-              }, []);
-
               // Tela de Loading Principal
-              if (user === undefined || isLoadingData) { // undefined = auth não checou; isLoadingData = dados não chegaram
-                 console.log(`Ainda carregando: Dados=${isLoadingData}, Auth=${user === undefined}`);
+              if (user === undefined || isLoadingData) {
                  return <LoadingScreen />;
               }
                console.log("Renderizando App Completo. Usuário:", user?.profile?.role);
@@ -1266,9 +1222,8 @@
                 <div className="min-h-screen grid grid-rows-[auto_1fr_auto] bg-black text-gray-200">
                   <TopBar/>
                   <Header onSearch={handleSearch} user={user} onSignOut={handleSignOut} />
-                  {/* Passa storage para o Router */}
-                  <Router vehicles={vehicles} user={user} db={db} appId={appId} storage={storage} />
-                  <Footer/>
+                  {/* Passa o cliente Supabase para o Router */}
+                  <Router vehicles={vehicles} user={user} />
                 </div>
               );
             }
@@ -1279,6 +1234,7 @@
             const container = document.getElementById('root');
             if (container) {
               try {
+                // CORREÇÃO: ReactDOM.createRoot
                 const root = ReactDOM.createRoot(container);
                 root.render(<DealershipCatalogApp />);
               } catch (e) {
@@ -1291,11 +1247,10 @@
         
         } // Fim da função main()
         
-        // Garante que a função main só rode depois que todos os scripts (incluindo Firebase) carregaram
+        // Garante que a função main só rode depois que todos os scripts (incluindo Supabase) carregaram
         window.onload = main;
     </script>
     
-    {/* Estilos auxiliares para os inputs do admin */}
     <style>
         .input-admin {
              @apply rounded-lg border-gray-700 bg-gray-800 text-white w-full focus:ring-red-500 focus:border-red-500 disabled:opacity-50 placeholder-gray-500 px-3 py-2 text-sm;
@@ -1328,6 +1283,7 @@
              cursor: pointer;
              border: none; /* Remove border padrão do Firefox */
          }
+         /* Remove o highlight vermelho em inputs válidos, mantendo apenas nos inválidos */
          input:invalid, select:invalid {
             @apply border-red-500 ring-red-500;
          }
